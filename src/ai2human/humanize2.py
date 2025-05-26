@@ -1,0 +1,194 @@
+import os
+from dotenv import load_dotenv
+from langchain.llms import OpenAI
+from langchain.prompts import PromptTemplate
+from langchain.chains import LLMChain
+from langchain.callbacks import get_openai_callback
+from typing import List, Dict
+
+# Load environment variables (for OPENAI_API_KEY)
+load_dotenv()
+
+
+class TextHumanizer:
+    def __init__(self, api_key: str = None, model_name: str = "gpt-3.5-turbo"):
+        """
+        Initialize the TextHumanizer with OpenAI API key and model.
+        Args:
+            api_key: OpenAI API key (optional, will use env if not provided)
+            model_name: Model to use (default: gpt-3.5-turbo)
+        """
+        if api_key is None:
+            api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "OPENAI_API_KEY not found. Please set it in your .env file or environment."
+            )
+        os.environ["OPENAI_API_KEY"] = api_key
+        self.llm = OpenAI(temperature=0.7, model_name=model_name)
+        self.iteration_history = []
+
+    def create_humanization_prompts(self) -> List[Dict[str, str]]:
+        prompts = [
+            {
+                "description": "Initial humanization - Add natural flow",
+                "template": """
+                Please rewrite the following text to make it sound more natural and human-like. 
+                Focus on:
+                - Using conversational tone
+                - Adding natural transitions
+                - Varying sentence structure
+                
+                Original text:
+                {text}
+                
+                Humanized version:
+                """,
+            },
+            {
+                "description": "Add personality and emotion",
+                "template": """
+                Take this text and enhance it by:
+                - Adding appropriate emotional nuances
+                - Including personal touches where suitable
+                - Making it more engaging and relatable
+                
+                Current text:
+                {text}
+                
+                Enhanced version:
+                """,
+            },
+            {
+                "description": "Improve readability and flow",
+                "template": """
+                Refine this text further by:
+                - Ensuring smooth flow between ideas
+                - Using more natural word choices
+                - Breaking up complex sentences if needed
+                - Adding subtle colloquialisms where appropriate
+                
+                Current text:
+                {text}
+                
+                Refined version:
+                """,
+            },
+            {
+                "description": "Final polish",
+                "template": """
+                Give this text a final polish to ensure it sounds completely natural:
+                - Check for any remaining stiff or formal language
+                - Ensure consistency in tone
+                - Make any final adjustments for natural human expression
+                
+                Current text:
+                {text}
+                
+                Final version:
+                """,
+            },
+        ]
+        return prompts
+
+    def humanize_text(
+        self, input_text: str, iterations: int = None, verbose: bool = True
+    ) -> str:
+        prompts = self.create_humanization_prompts()
+        if iterations is None:
+            iterations = len(prompts)
+        else:
+            iterations = min(iterations, len(prompts))
+        current_text = input_text
+        self.iteration_history = [
+            {"iteration": 0, "text": input_text, "description": "Original text"}
+        ]
+        total_tokens = 0
+        total_cost = 0
+        for i in range(iterations):
+            prompt_info = prompts[i]
+            if verbose:
+                print(f"\n{'='*50}")
+                print(f"Iteration {i+1}: {prompt_info['description']}")
+                print(f"{'='*50}")
+            prompt_template = PromptTemplate(
+                input_variables=["text"], template=prompt_info["template"]
+            )
+            chain = LLMChain(llm=self.llm, prompt=prompt_template)
+            with get_openai_callback() as cb:
+                current_text = chain.run(text=current_text)
+                total_tokens += cb.total_tokens
+                total_cost += cb.total_cost
+            self.iteration_history.append(
+                {
+                    "iteration": i + 1,
+                    "text": current_text,
+                    "description": prompt_info["description"],
+                }
+            )
+            if verbose:
+                print(f"Tokens used: {cb.total_tokens}")
+                print(f"Cost: ${cb.total_cost:.4f}")
+        if verbose:
+            print(f"\n{'='*50}")
+            print(f"Total tokens used: {total_tokens}")
+            print(f"Total cost: ${total_cost:.4f}")
+            print(f"{'='*50}")
+        return current_text
+
+    def get_iteration_history(self) -> List[Dict]:
+        return self.iteration_history
+
+    def compare_versions(
+        self, iteration_a: int = 0, iteration_b: int = -1
+    ) -> Dict[str, str]:
+        if not self.iteration_history:
+            return {"error": "No iteration history available"}
+        version_a = self.iteration_history[iteration_a]["text"]
+        version_b = self.iteration_history[iteration_b]["text"]
+        return {
+            "version_a": {
+                "iteration": iteration_a,
+                "description": self.iteration_history[iteration_a]["description"],
+                "text": version_a,
+            },
+            "version_b": {
+                "iteration": iteration_b
+                if iteration_b >= 0
+                else len(self.iteration_history) + iteration_b,
+                "description": self.iteration_history[iteration_b]["description"],
+                "text": version_b,
+            },
+        }
+
+
+def main():
+    # Initialize the humanizer (API key loaded from env or .env)
+    humanizer = TextHumanizer()
+    formal_text = """
+    The implementation of artificial intelligence systems in corporate environments 
+    has demonstrated significant improvements in operational efficiency. Statistical 
+    analysis indicates a 47.3% increase in productivity metrics across surveyed 
+    organizations. Furthermore, the integration of machine learning algorithms has 
+    facilitated the automation of repetitive tasks, thereby allowing human resources 
+    to be allocated to more strategic initiatives.
+    """
+    humanized_text = humanizer.humanize_text(formal_text, verbose=True)
+    print("\n\nFINAL RESULT:")
+    print("=" * 50)
+    print(humanized_text)
+    print("\n\nCOMPARISON:")
+    print("=" * 50)
+    comparison = humanizer.compare_versions()
+    print(f"Original:\n{comparison['version_a']['text']}")
+    print(f"\nFinal:\n{comparison['version_b']['text']}")
+    history = humanizer.get_iteration_history()
+    with open("humanization_history.txt", "w", encoding="utf-8") as f:
+        for item in history:
+            f.write(f"\nIteration {item['iteration']}: {item['description']}\n")
+            f.write("-" * 50 + "\n")
+            f.write(item["text"] + "\n")
+
+
+if __name__ == "__main__":
+    main()
