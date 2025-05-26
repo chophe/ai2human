@@ -18,6 +18,7 @@ class AdvancedTextHumanizer:
         api_key: str,
         model_name: str = "gpt-3.5-turbo",
         use_chat_model: bool = True,
+        base_url: Optional[str] = None,
     ):
         """
         Initialize the Advanced TextHumanizer with more features.
@@ -26,13 +27,21 @@ class AdvancedTextHumanizer:
             api_key: OpenAI API key
             model_name: Model to use
             use_chat_model: Whether to use chat model (recommended)
+            base_url: Optional base URL for the OpenAI API
         """
         os.environ["OPENAI_API_KEY"] = api_key
 
+        llm_params = {
+            "temperature": 0.7,
+            "model_name": model_name,
+        }
+        if base_url:
+            llm_params["base_url"] = base_url
+
         if use_chat_model:
-            self.llm = ChatOpenAI(temperature=0.7, model_name=model_name)
+            self.llm = ChatOpenAI(**llm_params)
         else:
-            self.llm = OpenAI(temperature=0.7, model_name=model_name)
+            self.llm = OpenAI(**llm_params)
 
         self.iteration_history = []
         self.memory = ConversationBufferMemory()
@@ -529,7 +538,10 @@ def advanced_example():
     if api_key == "your-openai-api-key-here":
         print("Warning: Using placeholder API key. Please set your OpenAI API key.")
 
-    humanizer = AdvancedTextHumanizer(api_key=api_key)
+    # Example: Replace "your-base-url-here" with your actual base URL if needed
+    base_url = os.getenv("OPENAI_BASE_URL", None)  # "your-base-url-here"
+
+    humanizer = AdvancedTextHumanizer(api_key=api_key, base_url=base_url)
 
     # Example texts with different styles
     examples = {
@@ -616,7 +628,10 @@ def custom_pipeline_example():
     api_key = os.getenv("OPENAI_API_KEY", "your-openai-api-key-here")
     if api_key == "your-openai-api-key-here":
         print("Warning: Using placeholder API key for custom_pipeline_example.")
-    humanizer = AdvancedTextHumanizer(api_key=api_key)
+
+    # Example: Replace "your-base-url-here" with your actual base URL if needed
+    base_url = os.getenv("OPENAI_BASE_URL", None)  # "your-base-url-here"
+    humanizer = AdvancedTextHumanizer(api_key=api_key, base_url=base_url)
 
     custom_steps = [
         {
