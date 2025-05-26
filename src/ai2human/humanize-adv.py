@@ -651,9 +651,22 @@ def custom_pipeline_example():
     custom_prompts = humanizer.create_custom_pipeline(custom_steps)
 
     text_to_process = """
-    The research findings indicate that regular exercise contributes to improved 
-    cognitive function and enhanced mood regulation through the release of endorphins.
-    """
+   Dear Dr. Hamid Nick and the Selection Committee,
+
+I am thrilled to apply for the PhD position at DTU Offshore, focusing on the bio-geo-chemistry of Underground Hydrogen Storage (UHS), Carbon Capture and Storage (CCS), and their environmental impacts (Job ID: 5163). With a Master’s degree in Renewable Energy Engineering and over 15 years of experience in computational modeling and sustainable energy solutions, I am eager to contribute my technical expertise and passion for environmental innovation to your esteemed research team.
+
+My academic journey has been driven by a deep curiosity about solving complex engineering challenges. During my Master’s at the Materials and Energy Research Center, I conducted a thesis titled “Numerical Study of the Accuracy of the Three-Bowl Anemometer under Diagonal Flows.” Using ANSYS Fluent, I developed and validated airflow models, optimizing mesh configurations to reduce measurement errors by up to 5%. This experience not only honed my skills in Computational Fluid Dynamics (CFD) but also sparked my interest in interdisciplinary research, particularly in areas like energy storage and environmental sustainability that align with the goals of this PhD program.
+
+Professionally, I have spent 15 years as a Renewable Energy Engineer at Nik Andish Kaveh Company, where I designed solar photovoltaic systems and leveraged tools like MATLAB and PVsyst to enhance efficiency. A highlight of my career was reducing installation costs by 20% while maintaining a 95% client satisfaction rate—a testament to my ability to balance technical rigor with practical impact. Additionally, as the founder of EverClean, a startup developing biodegradable products, I led laboratory research to create compostable materials, deepening my understanding of sustainable innovation and cross-disciplinary collaboration.
+
+The opportunity to join DTU Offshore excites me because it bridges my expertise in computational modeling with the pressing need to address bio-geo-chemical challenges in UHS and CCS. I am particularly drawn to the project’s focus on microbial interactions and CO2 leakage assessment, as these areas combine my technical skills with my commitment to mitigating climate change. With proficiency in ANSYS, MATLAB, and Python, and a proven ability to work in diverse teams, I am confident in my capacity to contribute meaningfully to your research.
+
+Thank you for considering my application. I would be delighted to discuss how my background and enthusiasm can support DTU’s mission to advance the energy transition. I look forward to the possibility of joining your vibrant research community.
+
+Sincerely,  
+Dena Milani  
+[Email: dena.milani@gmail.com | Phone: +989128137344]
+       """
 
     print(f"{'='*60}")
     print("CUSTOM PIPELINE EXAMPLE")
