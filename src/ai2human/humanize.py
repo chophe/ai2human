@@ -8,6 +8,7 @@ from langchain_core.output_parsers import StrOutputParser
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
 if not OPENAI_API_KEY:
     raise ValueError(
         "OPENAI_API_KEY not found. Please set it in your .env file or environment."
@@ -20,7 +21,10 @@ TEMPERATURE = (
 
 # Langchain Setup
 llm = ChatOpenAI(
-    openai_api_key=OPENAI_API_KEY, model=LLM_MODEL, temperature=TEMPERATURE
+    openai_api_key=OPENAI_API_KEY,
+    model=LLM_MODEL,
+    temperature=TEMPERATURE,
+    base_url=OPENAI_BASE_URL,
 )
 
 humanize_prompt_template_str = """
