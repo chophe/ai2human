@@ -14,7 +14,7 @@ class TextHumanizer:
     def __init__(
         self,
         api_key: str = None,
-        model_name: str = "gpt-3.5-turbo",
+        model_name: str = "gpt-4.1",
         api_base_url: str = None,
     ):
         """
