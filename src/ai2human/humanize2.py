@@ -1,9 +1,8 @@
 import os
 from dotenv import load_dotenv
-from langchain.llms import OpenAI
+from langchain_community.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
-from langchain.callbacks import get_openai_callback
+from langchain_community.callbacks.manager import get_openai_callback
 from typing import List, Dict
 
 # Load environment variables (for OPENAI_API_KEY)
@@ -33,10 +32,10 @@ class TextHumanizer:
         if api_base_url is None:
             api_base_url = os.getenv("OPENAI_API_BASE") or os.getenv("OPENAI_BASE_URL")
         os.environ["OPENAI_API_KEY"] = api_key
-        llm_kwargs = {"temperature": 0.7, "model_name": model_name}
+        llm_kwargs = {"temperature": 0.7, "model": model_name}
         if api_base_url:
             llm_kwargs["base_url"] = api_base_url
-        self.llm = OpenAI(**llm_kwargs)
+        self.llm = ChatOpenAI(openai_api_key=api_key, **llm_kwargs)
         self.iteration_history = []
 
     def create_humanization_prompts(self) -> List[Dict[str, str]]:
@@ -125,9 +124,9 @@ class TextHumanizer:
             prompt_template = PromptTemplate(
                 input_variables=["text"], template=prompt_info["template"]
             )
-            chain = LLMChain(llm=self.llm, prompt=prompt_template)
+            chain = prompt_template | self.llm
             with get_openai_callback() as cb:
-                current_text = chain.run(text=current_text)
+                current_text = chain.invoke({"text": current_text})
                 total_tokens += cb.total_tokens
                 total_cost += cb.total_cost
             self.iteration_history.append(
