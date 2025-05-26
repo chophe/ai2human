@@ -126,7 +126,8 @@ class TextHumanizer:
             )
             chain = prompt_template | self.llm
             with get_openai_callback() as cb:
-                current_text = chain.invoke({"text": current_text})
+                response = chain.invoke({"text": current_text})
+                current_text = response.content
                 total_tokens += cb.total_tokens
                 total_cost += cb.total_cost
             self.iteration_history.append(
@@ -154,20 +155,27 @@ class TextHumanizer:
     ) -> Dict[str, str]:
         if not self.iteration_history:
             return {"error": "No iteration history available"}
-        version_a = self.iteration_history[iteration_a]["text"]
-        version_b = self.iteration_history[iteration_b]["text"]
+
+        text_a = self.iteration_history[iteration_a]["text"]
+        if not isinstance(text_a, str):
+            text_a = str(text_a)
+
+        text_b = self.iteration_history[iteration_b]["text"]
+        if not isinstance(text_b, str):
+            text_b = str(text_b)
+
         return {
             "version_a": {
                 "iteration": iteration_a,
                 "description": self.iteration_history[iteration_a]["description"],
-                "text": version_a,
+                "text": text_a,
             },
             "version_b": {
                 "iteration": iteration_b
                 if iteration_b >= 0
                 else len(self.iteration_history) + iteration_b,
                 "description": self.iteration_history[iteration_b]["description"],
-                "text": version_b,
+                "text": text_b,
             },
         }
 
@@ -186,7 +194,10 @@ def main():
     humanized_text = humanizer.humanize_text(formal_text, verbose=True)
     print("\n\nFINAL RESULT:")
     print("=" * 50)
-    print(humanized_text)
+    if hasattr(humanized_text, "content"):
+        print(humanized_text.content)
+    else:
+        print(humanized_text)
     print("\n\nCOMPARISON:")
     print("=" * 50)
     comparison = humanizer.compare_versions()
@@ -197,10 +208,12 @@ def main():
         for item in history:
             f.write(f"\nIteration {item['iteration']}: {item['description']}\n")
             f.write("-" * 50 + "\n")
-            text = item["text"]
-            if not isinstance(text, str):
-                text = str(text)
-            f.write(text + "\n")
+            text_to_write = item["text"]
+            if hasattr(text_to_write, "content"):
+                text_to_write = text_to_write.content
+            elif not isinstance(text_to_write, str):
+                text_to_write = str(text_to_write)
+            f.write(text_to_write + "\n")
 
 
 if __name__ == "__main__":
