@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from langchain_community.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain_community.callbacks.manager import get_openai_callback
 from typing import List, Dict
@@ -197,7 +197,10 @@ def main():
         for item in history:
             f.write(f"\nIteration {item['iteration']}: {item['description']}\n")
             f.write("-" * 50 + "\n")
-            f.write(item["text"] + "\n")
+            text = item["text"]
+            if not isinstance(text, str):
+                text = str(text)
+            f.write(text + "\n")
 
 
 if __name__ == "__main__":
