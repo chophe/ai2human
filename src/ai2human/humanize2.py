@@ -11,12 +11,18 @@ load_dotenv()
 
 
 class TextHumanizer:
-    def __init__(self, api_key: str = None, model_name: str = "gpt-3.5-turbo"):
+    def __init__(
+        self,
+        api_key: str = None,
+        model_name: str = "gpt-3.5-turbo",
+        api_base_url: str = None,
+    ):
         """
-        Initialize the TextHumanizer with OpenAI API key and model.
+        Initialize the TextHumanizer with OpenAI API key, model, and optional API base URL.
         Args:
             api_key: OpenAI API key (optional, will use env if not provided)
             model_name: Model to use (default: gpt-3.5-turbo)
+            api_base_url: Base URL for OpenAI API (optional, will use env if not provided)
         """
         if api_key is None:
             api_key = os.getenv("OPENAI_API_KEY")
@@ -24,8 +30,13 @@ class TextHumanizer:
             raise ValueError(
                 "OPENAI_API_KEY not found. Please set it in your .env file or environment."
             )
+        if api_base_url is None:
+            api_base_url = os.getenv("OPENAI_API_BASE") or os.getenv("OPENAI_BASE_URL")
         os.environ["OPENAI_API_KEY"] = api_key
-        self.llm = OpenAI(temperature=0.7, model_name=model_name)
+        llm_kwargs = {"temperature": 0.7, "model_name": model_name}
+        if api_base_url:
+            llm_kwargs["base_url"] = api_base_url
+        self.llm = OpenAI(**llm_kwargs)
         self.iteration_history = []
 
     def create_humanization_prompts(self) -> List[Dict[str, str]]:
