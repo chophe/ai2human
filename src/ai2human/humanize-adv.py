@@ -16,7 +16,7 @@ class AdvancedTextHumanizer:
     def __init__(
         self,
         api_key: str,
-        model_name: str = "gpt-3.5-turbo",
+        model_name: str = "gpt-4.1",
         use_chat_model: bool = True,
         base_url: Optional[str] = None,
     ):
