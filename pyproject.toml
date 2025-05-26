@@ -5,7 +5,11 @@ description = "Add your description here"
 authors = [
     { name = "Chophe", email = "chophe@yahoo.com" }
 ]
-dependencies = []
+dependencies = [
+    "langchain",
+    "langchain-openai",
+    "python-dotenv"
+]
 readme = "README.md"
 requires-python = ">= 3.8"
 
