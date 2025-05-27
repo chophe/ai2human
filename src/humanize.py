@@ -100,7 +100,7 @@ def _process_func(_unused, text, extra_kwargs):
 def _extra_args():
     return [
         {
-            "name": "--iterations",
+            "flags": ["--iterations"],
             "type": int,
             "default": 3,
             "help": "Number of humanization iterations (default: 3).",

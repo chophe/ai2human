@@ -33,7 +33,7 @@ class TextHumanizer:
         if api_base_url is None:
             api_base_url = os.getenv("OPENAI_API_BASE") or os.getenv("OPENAI_BASE_URL")
         os.environ["OPENAI_API_KEY"] = api_key
-        llm_kwargs = {"temperature": 0.7, "model": model_name}
+        llm_kwargs = {"temperature": 0.7, "model_name": model_name}
         if api_base_url:
             llm_kwargs["base_url"] = api_base_url
         self.llm = ChatOpenAI(openai_api_key=api_key, **llm_kwargs)
@@ -192,7 +192,7 @@ def _process_func(humanizer, text, extra_kwargs):
 def _extra_args():
     return [
         {
-            "name": "--iterations",
+            "flags": ["--iterations"],
             "type": int,
             "default": None,
             "help": "Number of humanization iterations (default: all available prompts).",

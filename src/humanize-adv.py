@@ -40,11 +40,15 @@ class AdvancedTextHumanizer:
         }
         if base_url:
             llm_params["base_url"] = base_url
+            if use_chat_model:
+                llm_params["openai_api_base"] = base_url
+            else:
+                llm_params["openai_api_base"] = base_url
 
         if use_chat_model:
-            self.llm = ChatOpenAI(**llm_params)
+            self.llm = ChatOpenAI(openai_api_key=api_key, **llm_params)
         else:
-            self.llm = OpenAI(**llm_params)
+            self.llm = OpenAI(openai_api_key=api_key, **llm_params)
 
         self.iteration_history = []
         self.memory = ConversationBufferMemory()
@@ -534,44 +538,51 @@ def compare_texts_side_by_side(original: str, humanized: str, width: int = 40):
 
 
 # --- CLI integration ---
-def _process_func(humanizer, text, extra_kwargs):
-    return humanizer.humanize_with_context(
-        input_text=text,
+def _process_func(humanizer_instance, text_content, extra_kwargs):
+    # Extract arguments for humanize_with_context from extra_kwargs
+    # These kwargs are populated by 'extra_setup' and the default args parser in generic_main_cli
+    result_dict = humanizer_instance.humanize_with_context(
+        input_text=text_content,
         context=extra_kwargs.get("context"),
         target_style=extra_kwargs.get("style", "conversational"),
         preserve_facts=extra_kwargs.get("preserve_facts", True),
         max_iterations=extra_kwargs.get("max_iterations", 3),
-    )["final_text"]
+    )
+    return result_dict["final_text"]  # Return only the final text string
 
 
 def _extra_args():
+    # These are the arguments specific to AdvancedTextHumanizer
     return [
         {
-            "name": "--style",
+            "flags": ["--style"],
             "type": str,
             "default": "conversational",
             "choices": ["conversational", "professional", "casual", "academic"],
             "help": "Target writing style (default: conversational).",
         },
         {
-            "name": "--context",
+            "flags": ["--context"],
             "type": str,
             "default": None,
             "help": "Optional context about the text.",
         },
         {
-            "name": "--preserve-facts",
-            "action": "store_true",
-            "help": "Whether to try and preserve factual information (default: True).",
+            "flags": ["--preserve-facts"],  # Main flag to enable
+            "action": argparse.BooleanOptionalAction,  # Allows --preserve-facts and --no-preserve-facts
+            "default": True,
+            "help": "Whether to try and preserve factual information (default: enabled).",
         },
+        # BooleanOptionalAction creates --preserve-facts and --no-preserve-facts automatically.
+        # No need for separate --no-preserve-facts if using BooleanOptionalAction and default=True.
+        # {
+        #     "flags": ["--no-preserve-facts"],
+        #     "action": "store_false", # This sets preserve_facts to False
+        #     "dest": "preserve_facts", # Ensure this writes to the same dest as --preserve-facts
+        #     "help": "Disable fact preservation.",
+        # },
         {
-            "name": "--no-preserve-facts",
-            "action": "store_false",
-            "dest": "preserve_facts",
-            "help": "Disable fact preservation.",
-        },
-        {
-            "name": "--max-iterations",
+            "flags": ["--max-iterations"],
             "type": int,
             "default": 3,
             "help": "Maximum number of iterations for style-specific prompts (default: 3).",
@@ -588,17 +599,40 @@ if __name__ == "__main__":
     sys.modules["humanize_cli_utils"] = cli_utils
     spec.loader.exec_module(cli_utils)
 
+    # Define how to instantiate AdvancedTextHumanizer, now that generic_main_cli handles it
+    # It expects api_key and optionally base_url.
+    # generic_main_cli will try to provide these from os.environ if the class constructor
+    # (AdvancedTextHumanizer.__init__) includes 'api_key' and 'base_url' as parameters.
+    # Our updated AdvancedTextHumanizer expects them.
+    def humanizer_factory():
+        api_key = os.getenv("OPENAI_API_KEY")
+        base_url = os.getenv("OPENAI_BASE_URL")  # Can be None
+        if not api_key:
+            # generic_main_cli should ideally handle this, but a check here is also good.
+            # However, the instantiation happens inside generic_main_cli now.
+            # This factory is more about *how* to call it if it had complex needs not covered by env vars alone.
+            # For this case, generic_main_cli's default behavior of checking env vars should be sufficient.
+            # If api_key is absolutely mandatory and not found, generic_main_cli's instantiation will fail.
+            # Consider if AdvancedTextHumanizer should raise an error if api_key is None.
+            # Current AdvancedTextHumanizer takes api_key as a mandatory arg.
+            print(
+                "Error: OPENAI_API_KEY not found in environment for AdvancedTextHumanizer."
+            )
+            # sys.exit(1) # Exiting here might be too early, let generic_main_cli handle instantiation error.
+            # For now, we rely on generic_main_cli to pass the key or fail.
+            # The factory can be simplified if generic_main_cli handles env var pickup well.
+            pass  # Rely on generic_main_cli to attempt instantiation
+        return AdvancedTextHumanizer(api_key=api_key, base_url=base_url)
+
     cli_utils.generic_main_cli(
         description="Advanced Text Humanizer CLI",
-        humanizer_class=lambda: AdvancedTextHumanizer(
-            api_key=os.getenv("OPENAI_API_KEY"), base_url=os.getenv("OPENAI_BASE_URL")
-        ),
+        humanizer_class=AdvancedTextHumanizer,  # Pass the class itself. generic_main_cli will instantiate.
         process_func=_process_func,
         extra_args=_extra_args(),
         extra_setup=lambda args: {
             "style": args.style,
             "context": args.context,
-            "preserve_facts": args.preserve_facts,
+            "preserve_facts": args.preserve_facts,  # This will be correctly set by BooleanOptionalAction
             "max_iterations": args.max_iterations,
             "verbose": args.verbose,
         },
