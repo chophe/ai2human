@@ -4,6 +4,8 @@ from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain_community.callbacks.manager import get_openai_callback
 from typing import List, Dict
+import argparse
+import glob
 
 # Load environment variables (for OPENAI_API_KEY)
 load_dotenv()
@@ -180,49 +182,111 @@ class TextHumanizer:
         }
 
 
-def main():
-    # Initialize the humanizer (API key loaded from env or .env)
-    humanizer = TextHumanizer()
-    formal_text = """
-    Dear Dr. Hamid Nick and the Selection Committee,
+def main_cli():
+    parser = argparse.ArgumentParser(description="Text Humanizer CLI (version 2)")
+    input_group = parser.add_mutually_exclusive_group()
+    input_group.add_argument("--text", type=str, help="Text to humanize directly.")
+    input_group.add_argument(
+        "--file", type=str, help="Path to a text file to humanize."
+    )
+    input_group.add_argument(
+        "--folder",
+        type=str,
+        help="Path to a folder containing .txt and .md files to humanize.",
+    )
+    parser.add_argument(
+        "--iterations",
+        type=int,
+        default=None,
+        help="Number of humanization iterations (default: all available prompts).",
+    )
+    parser.add_argument(
+        "--verbose",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Print progress and cost messages (default: True).",
+    )
 
-I am thrilled to apply for the PhD position at DTU Offshore, focusing on the bio-geo-chemistry of Underground Hydrogen Storage (UHS), Carbon Capture and Storage (CCS), and their environmental impacts (Job ID: 5163). With a Master’s degree in Renewable Energy Engineering and over 15 years of experience in computational modeling and sustainable energy solutions, I am eager to contribute my technical expertise and passion for environmental innovation to your esteemed research team.
+    args = parser.parse_args()
 
-My academic journey has been driven by a deep curiosity about solving complex engineering challenges. During my Master’s at the Materials and Energy Research Center, I conducted a thesis titled “Numerical Study of the Accuracy of the Three-Bowl Anemometer under Diagonal Flows.” Using ANSYS Fluent, I developed and validated airflow models, optimizing mesh configurations to reduce measurement errors by up to 5%. This experience not only honed my skills in Computational Fluid Dynamics (CFD) but also sparked my interest in interdisciplinary research, particularly in areas like energy storage and environmental sustainability that align with the goals of this PhD program.
+    try:
+        humanizer = TextHumanizer()
+    except ValueError as e:
+        print(f"Error initializing TextHumanizer: {e}")
+        return
 
-Professionally, I have spent 15 years as a Renewable Energy Engineer at Nik Andish Kaveh Company, where I designed solar photovoltaic systems and leveraged tools like MATLAB and PVsyst to enhance efficiency. A highlight of my career was reducing installation costs by 20% while maintaining a 95% client satisfaction rate—a testament to my ability to balance technical rigor with practical impact. Additionally, as the founder of EverClean, a startup developing biodegradable products, I led laboratory research to create compostable materials, deepening my understanding of sustainable innovation and cross-disciplinary collaboration.
+    texts_to_process = []
 
-The opportunity to join DTU Offshore excites me because it bridges my expertise in computational modeling with the pressing need to address bio-geo-chemical challenges in UHS and CCS. I am particularly drawn to the project’s focus on microbial interactions and CO2 leakage assessment, as these areas combine my technical skills with my commitment to mitigating climate change. With proficiency in ANSYS, MATLAB, and Python, and a proven ability to work in diverse teams, I am confident in my capacity to contribute meaningfully to your research.
+    if args.text:
+        texts_to_process.append({"source": "command-line text", "content": args.text})
+    elif args.file:
+        try:
+            with open(args.file, "r", encoding="utf-8") as f:
+                texts_to_process.append({"source": args.file, "content": f.read()})
+        except FileNotFoundError:
+            print(f"Error: File not found at {args.file}")
+            return
+        except Exception as e:
+            print(f"Error reading file {args.file}: {e}")
+            return
+    elif args.folder:
+        found_files = []
+        for ext in ("*.txt", "*.md"):
+            found_files.extend(glob.glob(os.path.join(args.folder, ext)))
 
-Thank you for considering my application. I would be delighted to discuss how my background and enthusiasm can support DTU’s mission to advance the energy transition. I look forward to the possibility of joining your vibrant research community.
+        if not found_files:
+            print(f"No .txt or .md files found in folder {args.folder}")
+            return
 
-Sincerely,  
-Dena Milani  
-[Email: dena.milani@gmail.com | Phone: +989128137344]    """
-    humanized_text = humanizer.humanize_text(formal_text, verbose=True)
-    print("\n\nFINAL RESULT:")
-    print("=" * 50)
-    if hasattr(humanized_text, "content"):
-        print(humanized_text.content)
+        for filepath in found_files:
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    texts_to_process.append({"source": filepath, "content": f.read()})
+            except Exception as e:
+                print(f"Error reading file {filepath}: {e}")
+                continue
     else:
+        try:
+            print(
+                "No input provided via arguments. Please enter text to humanize (Ctrl+D or Ctrl+Z then Enter to finish):"
+            )
+            user_input_lines = []
+            while True:
+                line = input()
+                user_input_lines.append(line)
+        except EOFError:
+            user_text = "\n".join(user_input_lines)
+            if not user_text.strip():
+                print("No input received. Exiting.")
+                return
+            texts_to_process.append(
+                {"source": "interactive input", "content": user_text}
+            )
+        except KeyboardInterrupt:
+            print("\nOperation cancelled by user.")
+            return
+
+    if not texts_to_process:
+        print("No text to process. Exiting.")
+        return
+
+    for item in texts_to_process:
+        if args.verbose:
+            print(f"\n--- Humanizing content from: {item['source']} ---")
+            print(
+                f"Original Text:\n{item['content'][:500]}{'...' if len(item['content']) > 500 else ''}"
+            )
+
+        humanized_text = humanizer.humanize_text(
+            input_text=item["content"], iterations=args.iterations, verbose=args.verbose
+        )
+
+        if args.verbose:
+            print(f"\n=== Final Humanized Text from: {item['source']} ===")
         print(humanized_text)
-    print("\n\nCOMPARISON:")
-    print("=" * 50)
-    comparison = humanizer.compare_versions()
-    print(f"Original:\n{comparison['version_a']['text']}")
-    print(f"\nFinal:\n{comparison['version_b']['text']}")
-    history = humanizer.get_iteration_history()
-    with open("humanization_history.txt", "w", encoding="utf-8") as f:
-        for item in history:
-            f.write(f"\nIteration {item['iteration']}: {item['description']}\n")
-            f.write("-" * 50 + "\n")
-            text_to_write = item["text"]
-            if hasattr(text_to_write, "content"):
-                text_to_write = text_to_write.content
-            elif not isinstance(text_to_write, str):
-                text_to_write = str(text_to_write)
-            f.write(text_to_write + "\n")
+        if args.verbose and len(texts_to_process) > 1:
+            print("---------------------------------------------------")
 
 
 if __name__ == "__main__":
-    main()
+    main_cli()

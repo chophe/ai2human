@@ -10,6 +10,8 @@ from langchain.memory import ConversationBufferMemory
 from typing import List, Dict, Optional
 import hashlib
 import textwrap
+import argparse
+import glob
 
 
 class AdvancedTextHumanizer:
@@ -549,15 +551,15 @@ def advanced_example():
         "technical": """
 Dear Dr. Hamid Nick and the Selection Committee,
 
-I am thrilled to apply for the PhD position at DTU Offshore, focusing on the bio-geo-chemistry of Underground Hydrogen Storage (UHS), Carbon Capture and Storage (CCS), and their environmental impacts (Job ID: 5163). With a Master’s degree in Renewable Energy Engineering and over 15 years of experience in computational modeling and sustainable energy solutions, I am eager to contribute my technical expertise and passion for environmental innovation to your esteemed research team.
+I am thrilled to apply for the PhD position at DTU Offshore, focusing on the bio-geo-chemistry of Underground Hydrogen Storage (UHS), Carbon Capture and Storage (CCS), and their environmental impacts (Job ID: 5163). With a Master's degree in Renewable Energy Engineering and over 15 years of experience in computational modeling and sustainable energy solutions, I am eager to contribute my technical expertise and passion for environmental innovation to your esteemed research team.
 
-My academic journey has been driven by a deep curiosity about solving complex engineering challenges. During my Master’s at the Materials and Energy Research Center, I conducted a thesis titled “Numerical Study of the Accuracy of the Three-Bowl Anemometer under Diagonal Flows.” Using ANSYS Fluent, I developed and validated airflow models, optimizing mesh configurations to reduce measurement errors by up to 5%. This experience not only honed my skills in Computational Fluid Dynamics (CFD) but also sparked my interest in interdisciplinary research, particularly in areas like energy storage and environmental sustainability that align with the goals of this PhD program.
+My academic journey has been driven by a deep curiosity about solving complex engineering challenges. During my Master's at the Materials and Energy Research Center, I conducted a thesis titled "Numerical Study of the Accuracy of the Three-Bowl Anemometer under Diagonal Flows." Using ANSYS Fluent, I developed and validated airflow models, optimizing mesh configurations to reduce measurement errors by up to 5%. This experience not only honed my skills in Computational Fluid Dynamics (CFD) but also sparked my interest in interdisciplinary research, particularly in areas like energy storage and environmental sustainability that align with the goals of this PhD program.
 
 Professionally, I have spent 15 years as a Renewable Energy Engineer at Nik Andish Kaveh Company, where I designed solar photovoltaic systems and leveraged tools like MATLAB and PVsyst to enhance efficiency. A highlight of my career was reducing installation costs by 20% while maintaining a 95% client satisfaction rate—a testament to my ability to balance technical rigor with practical impact. Additionally, as the founder of EverClean, a startup developing biodegradable products, I led laboratory research to create compostable materials, deepening my understanding of sustainable innovation and cross-disciplinary collaboration.
 
-The opportunity to join DTU Offshore excites me because it bridges my expertise in computational modeling with the pressing need to address bio-geo-chemical challenges in UHS and CCS. I am particularly drawn to the project’s focus on microbial interactions and CO2 leakage assessment, as these areas combine my technical skills with my commitment to mitigating climate change. With proficiency in ANSYS, MATLAB, and Python, and a proven ability to work in diverse teams, I am confident in my capacity to contribute meaningfully to your research.
+The opportunity to join DTU Offshore excites me because it bridges my expertise in computational modeling with the pressing need to address bio-geo-chemical challenges in UHS and CCS. I am particularly drawn to the project's focus on microbial interactions and CO2 leakage assessment, as these areas combine my technical skills with my commitment to mitigating climate change. With proficiency in ANSYS, MATLAB, and Python, and a proven ability to work in diverse teams, I am confident in my capacity to contribute meaningfully to your research.
 
-Thank you for considering my application. I would be delighted to discuss how my background and enthusiasm can support DTU’s mission to advance the energy transition. I look forward to the possibility of joining your vibrant research community.
+Thank you for considering my application. I would be delighted to discuss how my background and enthusiasm can support DTU's mission to advance the energy transition. I look forward to the possibility of joining your vibrant research community.
 
 Sincerely,  
 Dena Milani  
@@ -611,15 +613,15 @@ Dena Milani
     batch_texts = [
         """Dear Dr. Hamid Nick and the Selection Committee,
 
-I am thrilled to apply for the PhD position at DTU Offshore, focusing on the bio-geo-chemistry of Underground Hydrogen Storage (UHS), Carbon Capture and Storage (CCS), and their environmental impacts (Job ID: 5163). With a Master’s degree in Renewable Energy Engineering and over 15 years of experience in computational modeling and sustainable energy solutions, I am eager to contribute my technical expertise and passion for environmental innovation to your esteemed research team.
+I am thrilled to apply for the PhD position at DTU Offshore, focusing on the bio-geo-chemistry of Underground Hydrogen Storage (UHS), Carbon Capture and Storage (CCS), and their environmental impacts (Job ID: 5163). With a Master's degree in Renewable Energy Engineering and over 15 years of experience in computational modeling and sustainable energy solutions, I am eager to contribute my technical expertise and passion for environmental innovation to your esteemed research team.
 
-My academic journey has been driven by a deep curiosity about solving complex engineering challenges. During my Master’s at the Materials and Energy Research Center, I conducted a thesis titled “Numerical Study of the Accuracy of the Three-Bowl Anemometer under Diagonal Flows.” Using ANSYS Fluent, I developed and validated airflow models, optimizing mesh configurations to reduce measurement errors by up to 5%. This experience not only honed my skills in Computational Fluid Dynamics (CFD) but also sparked my interest in interdisciplinary research, particularly in areas like energy storage and environmental sustainability that align with the goals of this PhD program.
+My academic journey has been driven by a deep curiosity about solving complex engineering challenges. During my Master's at the Materials and Energy Research Center, I conducted a thesis titled "Numerical Study of the Accuracy of the Three-Bowl Anemometer under Diagonal Flows." Using ANSYS Fluent, I developed and validated airflow models, optimizing mesh configurations to reduce measurement errors by up to 5%. This experience not only honed my skills in Computational Fluid Dynamics (CFD) but also sparked my interest in interdisciplinary research, particularly in areas like energy storage and environmental sustainability that align with the goals of this PhD program.
 
 Professionally, I have spent 15 years as a Renewable Energy Engineer at Nik Andish Kaveh Company, where I designed solar photovoltaic systems and leveraged tools like MATLAB and PVsyst to enhance efficiency. A highlight of my career was reducing installation costs by 20% while maintaining a 95% client satisfaction rate—a testament to my ability to balance technical rigor with practical impact. Additionally, as the founder of EverClean, a startup developing biodegradable products, I led laboratory research to create compostable materials, deepening my understanding of sustainable innovation and cross-disciplinary collaboration.
 
-The opportunity to join DTU Offshore excites me because it bridges my expertise in computational modeling with the pressing need to address bio-geo-chemical challenges in UHS and CCS. I am particularly drawn to the project’s focus on microbial interactions and CO2 leakage assessment, as these areas combine my technical skills with my commitment to mitigating climate change. With proficiency in ANSYS, MATLAB, and Python, and a proven ability to work in diverse teams, I am confident in my capacity to contribute meaningfully to your research.
+The opportunity to join DTU Offshore excites me because it bridges my expertise in computational modeling with the pressing need to address bio-geo-chemical challenges in UHS and CCS. I am particularly drawn to the project's focus on microbial interactions and CO2 leakage assessment, as these areas combine my technical skills with my commitment to mitigating climate change. With proficiency in ANSYS, MATLAB, and Python, and a proven ability to work in diverse teams, I am confident in my capacity to contribute meaningfully to your research.
 
-Thank you for considering my application. I would be delighted to discuss how my background and enthusiasm can support DTU’s mission to advance the energy transition. I look forward to the possibility of joining your vibrant research community.
+Thank you for considering my application. I would be delighted to discuss how my background and enthusiasm can support DTU's mission to advance the energy transition. I look forward to the possibility of joining your vibrant research community.
 
 Sincerely,  
 Dena Milani  
@@ -716,10 +718,137 @@ Dena Milani
             break  # Stop pipeline on error
 
 
-if __name__ == "__main__":
-    print("Running Advanced Humanizer Examples...")
-    advanced_example()
+def main_cli():
+    parser = argparse.ArgumentParser(description="Advanced Text Humanizer CLI")
+    input_group = parser.add_mutually_exclusive_group()
+    input_group.add_argument("--text", type=str, help="Text to humanize directly.")
+    input_group.add_argument(
+        "--file", type=str, help="Path to a text file to humanize."
+    )
+    input_group.add_argument(
+        "--folder",
+        type=str,
+        help="Path to a folder containing .txt and .md files to humanize.",
+    )
 
+    parser.add_argument(
+        "--style",
+        type=str,
+        default="conversational",
+        choices=["conversational", "professional", "casual", "academic"],
+        help="Target writing style (default: conversational).",
+    )
+    parser.add_argument(
+        "--context",
+        type=str,
+        default=None,
+        help="Optional context about the text.",
+    )
+    parser.add_argument(
+        "--preserve-facts",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Whether to try and preserve factual information (default: True).",
+    )
+    parser.add_argument(
+        "--max-iterations",
+        type=int,
+        default=3,
+        help="Maximum number of iterations for style-specific prompts (default: 3).",
+    )
+
+    args = parser.parse_args()
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    base_url = os.getenv("OPENAI_BASE_URL")
+
+    if not api_key:
+        print(
+            "Error: OPENAI_API_KEY environment variable not set. Please set it before running."
+        )
+        return
+
+    humanizer = AdvancedTextHumanizer(api_key=api_key, base_url=base_url)
+    texts_to_process = []
+
+    if args.text:
+        texts_to_process.append({"source": "command-line text", "content": args.text})
+    elif args.file:
+        try:
+            with open(args.file, "r", encoding="utf-8") as f:
+                texts_to_process.append({"source": args.file, "content": f.read()})
+        except FileNotFoundError:
+            print(f"Error: File not found at {args.file}")
+            return
+        except Exception as e:
+            print(f"Error reading file {args.file}: {e}")
+            return
+    elif args.folder:
+        found_files = []
+        for ext in ("*.txt", "*.md"):
+            found_files.extend(glob.glob(os.path.join(args.folder, ext)))
+
+        if not found_files:
+            print(f"No .txt or .md files found in folder {args.folder}")
+            return
+
+        for filepath in found_files:
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    texts_to_process.append({"source": filepath, "content": f.read()})
+            except Exception as e:
+                print(f"Error reading file {filepath}: {e}")
+                # Continue to next file
+    else:
+        try:
+            print(
+                "No input provided via arguments. Please enter text to humanize (Ctrl+D or Ctrl+Z then Enter to finish):"
+            )
+            user_input_lines = []
+            while True:
+                line = input()
+                user_input_lines.append(line)
+        except EOFError:
+            user_text = "\n".join(user_input_lines)
+            if not user_text.strip():
+                print("No input received. Exiting.")
+                return
+            texts_to_process.append(
+                {"source": "interactive input", "content": user_text}
+            )
+        except KeyboardInterrupt:
+            print("\nOperation cancelled by user.")
+            return
+
+    if not texts_to_process:
+        print("No text to process. Exiting.")
+        return
+
+    for item in texts_to_process:
+        print(f"\n--- Humanizing content from: {item['source']} ---")
+        print(
+            f"Original Text:\n{item['content'][:500]}{'...' if len(item['content']) > 500 else ''}"
+        )
+
+        result = humanizer.humanize_with_context(
+            input_text=item["content"],
+            context=args.context,
+            target_style=args.style,
+            preserve_facts=args.preserve_facts,
+            max_iterations=args.max_iterations,
+        )
+
+        print("\n--- Humanized Text ---")
+        print(result["final_text"])
+        print("------------------------")
+        if len(texts_to_process) > 1:
+            print(f"Finished processing: {item['source']}")
+
+
+if __name__ == "__main__":
+    # print("Running Advanced Humanizer Examples...")
+    # advanced_example() # Commented out to prioritize CLI
     # print("Running Custom Pipeline Example...")
-    # custom_pipeline_example()
-    print("Examples complete. Uncomment specific examples in main block to run them.")
+    # custom_pipeline_example() # Commented out to prioritize CLI
+    # print("Examples complete. Uncomment specific examples in main block to run them.")
+    main_cli()
