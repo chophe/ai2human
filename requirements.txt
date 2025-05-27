@@ -2,3 +2,7 @@ langchain
 langchain-openai
 python-dotenv 
 nltk
+transformers
+torch
+numpy
+json

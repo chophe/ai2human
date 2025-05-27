@@ -11,6 +11,11 @@ dependencies = [
     "python-dotenv",
     "langchain-community>=0.3.24",
     "nltk",
+    "torch",
+    "transformers",
+    "numpy",
+    "json",
+
 ]
 readme = "README.md"
 requires-python = ">= 3.8"
