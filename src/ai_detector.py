@@ -16,6 +16,7 @@ else:
     ssl._create_default_https_context = _create_unverified_https_context
 
 nltk.download("punkt", quiet=True)
+nltk.download("punkt_tab", quiet=True)
 nltk.download("averaged_perceptron_tagger", quiet=True)
 nltk.download("stopwords", quiet=True)
 
