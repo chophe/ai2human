@@ -3,8 +3,7 @@ from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-import argparse
-import glob
+import importlib.util
 
 # Load environment variables (for OPENAI_API_KEY)
 load_dotenv()
@@ -63,25 +62,10 @@ humanize_chain = humanize_prompt | llm | output_parser
 def iterative_humanize_text(
     initial_text: str, num_iterations: int = 3, verbose: bool = True
 ) -> tuple[str, list[dict]]:
-    """
-    Iteratively humanizes text using an LLM chain.
-
-    Args:
-        initial_text: The text to start humanizing.
-        num_iterations: The number of times to run the humanization prompt.
-        verbose: Whether to print progress messages.
-
-    Returns:
-        A tuple containing:
-            - The final humanized text.
-            - A list of dictionaries, where each dictionary records the text at each iteration.
-    """
     current_text = initial_text
     history = [{"iteration": 0, "text": current_text, "type": "Original"}]
-
     if verbose:
         print(f"Original Text:\n{current_text}\n{'-'*30}")
-
     for i in range(1, num_iterations + 1):
         if verbose:
             print(f"Processing Iteration {i}...")
@@ -104,124 +88,42 @@ def iterative_humanize_text(
     return current_text, history
 
 
-def main_cli():
-    parser = argparse.ArgumentParser(description="Iterative Text Humanizer CLI")
-    input_group = parser.add_mutually_exclusive_group()
-    input_group.add_argument("--text", type=str, help="Text to humanize directly.")
-    input_group.add_argument(
-        "--file", type=str, help="Path to a text file to humanize."
+def _process_func(_unused, text, extra_kwargs):
+    final_text, _ = iterative_humanize_text(
+        initial_text=text,
+        num_iterations=extra_kwargs.get("iterations", 3),
+        verbose=extra_kwargs.get("verbose", True),
     )
-    input_group.add_argument(
-        "--folder",
-        type=str,
-        help="Path to a folder containing .txt and .md files to humanize.",
-    )
-    parser.add_argument(
-        "--iterations",
-        type=int,
-        default=3,
-        help="Number of humanization iterations (default: 3).",
-    )
-    parser.add_argument(
-        "--verbose",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Print progress messages (default: True).",
-    )
+    return final_text
 
-    args = parser.parse_args()
-    texts_to_process = []
 
-    if args.text:
-        texts_to_process.append({"source": "command-line text", "content": args.text})
-    elif args.file:
-        try:
-            with open(args.file, "r", encoding="utf-8") as f:
-                texts_to_process.append({"source": args.file, "content": f.read()})
-        except FileNotFoundError:
-            print(f"Error: File not found at {args.file}")
-            return
-        except Exception as e:
-            print(f"Error reading file {args.file}: {e}")
-            return
-    elif args.folder:
-        found_files = []
-        for ext in ("*.txt", "*.md"):
-            found_files.extend(glob.glob(os.path.join(args.folder, ext)))
-
-        if not found_files:
-            print(f"No .txt or .md files found in folder {args.folder}")
-            return
-
-        for filepath in found_files:
-            try:
-                with open(filepath, "r", encoding="utf-8") as f:
-                    texts_to_process.append({"source": filepath, "content": f.read()})
-            except Exception as e:
-                print(f"Error reading file {filepath}: {e}")
-                # Continue to next file if one fails
-    else:
-        try:
-            print(
-                "No input provided via arguments. Please enter text to humanize (Ctrl+D or Ctrl+Z then Enter to finish):"
-            )
-            user_input_lines = []
-            while True:
-                line = input()
-                user_input_lines.append(line)
-        except EOFError:
-            user_text = "\n".join(user_input_lines)
-            if not user_text.strip():
-                print("No input received. Exiting.")
-                return
-            texts_to_process.append(
-                {"source": "interactive input", "content": user_text}
-            )
-        except KeyboardInterrupt:
-            print("\nOperation cancelled by user.")
-            return
-
-    if not texts_to_process:
-        print("No text to process. Exiting.")
-        return
-
-    for item in texts_to_process:
-        if args.verbose:
-            print(f"\n--- Humanizing content from: {item['source']} ---")
-
-        final_text, _ = iterative_humanize_text(
-            initial_text=item["content"],
-            num_iterations=args.iterations,
-            verbose=args.verbose,  # Pass verbose flag here
-        )
-
-        if args.verbose:
-            print(f"\n=== Final Humanized Text from: {item['source']} ==-")
-        print(final_text)
-        if args.verbose and len(texts_to_process) > 1:
-            print(f"---------------------------------------------------")
+def _extra_args():
+    return [
+        {
+            "name": "--iterations",
+            "type": int,
+            "default": 3,
+            "help": "Number of humanization iterations (default: 3).",
+        },
+    ]
 
 
 if __name__ == "__main__":
-    # sample_text_1 = """
-    # The system's operational parameters have been optimized for enhanced performance efficiency.
-    # User interaction protocols require adherence to predefined procedural guidelines to ensure data integrity.
-    # It is imperative that all personnel complete the mandatory training module prior to system access.
-    # """
+    import sys
 
-    # sample_text_2 = """
-    # Conclusion: The conducted experiment yielded results indicative of a positive correlation
-    # between the independent variable and the dependent variable. Statistical significance was observed.
-    # Further investigation is warranted to explore underlying mechanisms.
-    # """
+    cli_utils_path = os.path.join(os.path.dirname(__file__), "humanize_cli_utils.py")
+    spec = importlib.util.spec_from_file_location("humanize_cli_utils", cli_utils_path)
+    cli_utils = importlib.util.module_from_spec(spec)
+    sys.modules["humanize_cli_utils"] = cli_utils
+    spec.loader.exec_module(cli_utils)
 
-    # print("--- Humanizing Sample Text 1 ---")
-    # final_text_1, history_1 = iterative_humanize_text(sample_text_1, num_iterations=2)
-    # print("\n=== Final Humanized Text 1 ===")
-    # print(final_text_1)
-
-    # print("\n\n--- Humanizing Sample Text 2 ---")
-    # final_text_2, history_2 = iterative_humanize_text(sample_text_2, num_iterations=3)
-    # print("\n=== Final Humanized Text 2 ===")
-    # print(final_text_2)
-    main_cli()
+    cli_utils.generic_main_cli(
+        description="Iterative Text Humanizer CLI",
+        humanizer_class=lambda: None,  # No class needed for this script
+        process_func=_process_func,
+        extra_args=_extra_args(),
+        extra_setup=lambda args: {
+            "iterations": args.iterations,
+            "verbose": args.verbose,
+        },
+    )

@@ -12,6 +12,7 @@ import hashlib
 import textwrap
 import argparse
 import glob
+import importlib.util
 
 
 class AdvancedTextHumanizer:
@@ -532,323 +533,73 @@ def compare_texts_side_by_side(original: str, humanized: str, width: int = 40):
     print(separator)
 
 
-# Example usage with advanced features
-def advanced_example():
-    # Initialize the advanced humanizer
-    # IMPORTANT: Replace "your-openai-api-key-here" with your actual OpenAI API key
-    # or ensure it's set as an environment variable.
-    api_key = os.getenv("OPENAI_API_KEY", "your-openai-api-key-here")
-    if api_key == "your-openai-api-key-here":
-        print("Warning: Using placeholder API key. Please set your OpenAI API key.")
-
-    # Example: Replace "your-base-url-here" with your actual base URL if needed
-    base_url = os.getenv("OPENAI_BASE_URL", None)  # "your-base-url-here"
-
-    humanizer = AdvancedTextHumanizer(api_key=api_key, base_url=base_url)
-
-    # Example texts with different styles
-    examples = {
-        "technical": """
-Dear Dr. Hamid Nick and the Selection Committee,
-
-I am thrilled to apply for the PhD position at DTU Offshore, focusing on the bio-geo-chemistry of Underground Hydrogen Storage (UHS), Carbon Capture and Storage (CCS), and their environmental impacts (Job ID: 5163). With a Master's degree in Renewable Energy Engineering and over 15 years of experience in computational modeling and sustainable energy solutions, I am eager to contribute my technical expertise and passion for environmental innovation to your esteemed research team.
-
-My academic journey has been driven by a deep curiosity about solving complex engineering challenges. During my Master's at the Materials and Energy Research Center, I conducted a thesis titled "Numerical Study of the Accuracy of the Three-Bowl Anemometer under Diagonal Flows." Using ANSYS Fluent, I developed and validated airflow models, optimizing mesh configurations to reduce measurement errors by up to 5%. This experience not only honed my skills in Computational Fluid Dynamics (CFD) but also sparked my interest in interdisciplinary research, particularly in areas like energy storage and environmental sustainability that align with the goals of this PhD program.
-
-Professionally, I have spent 15 years as a Renewable Energy Engineer at Nik Andish Kaveh Company, where I designed solar photovoltaic systems and leveraged tools like MATLAB and PVsyst to enhance efficiency. A highlight of my career was reducing installation costs by 20% while maintaining a 95% client satisfaction rate—a testament to my ability to balance technical rigor with practical impact. Additionally, as the founder of EverClean, a startup developing biodegradable products, I led laboratory research to create compostable materials, deepening my understanding of sustainable innovation and cross-disciplinary collaboration.
-
-The opportunity to join DTU Offshore excites me because it bridges my expertise in computational modeling with the pressing need to address bio-geo-chemical challenges in UHS and CCS. I am particularly drawn to the project's focus on microbial interactions and CO2 leakage assessment, as these areas combine my technical skills with my commitment to mitigating climate change. With proficiency in ANSYS, MATLAB, and Python, and a proven ability to work in diverse teams, I am confident in my capacity to contribute meaningfully to your research.
-
-Thank you for considering my application. I would be delighted to discuss how my background and enthusiasm can support DTU's mission to advance the energy transition. I look forward to the possibility of joining your vibrant research community.
-
-Sincerely,  
-Dena Milani  
-[Email: dena.milani@gmail.com | Phone: +989128137344]
-        """,
-        "corporate": """
-        Our Q3 performance metrics indicate a 23% YoY growth in revenue streams, 
-        primarily driven by strategic market penetration initiatives and optimized 
-        operational efficiencies. The EBITDA margin expanded by 340 basis points, 
-        reflecting our commitment to sustainable profitability.
-        """,
-        "academic": """
-        The empirical analysis conducted on a sample size of n=1,247 participants 
-        revealed statistically significant correlations (p<0.001) between social 
-        media usage patterns and self-reported anxiety levels. The regression model 
-        explained 47% of the variance in the dependent variable.
-        """,
-    }
-
-    for text_type, text_content in examples.items():
-        print(f"{'='*60}")
-        print(f"Processing {text_type.upper()} text")
-        print(f"{'='*60}")
-
-        style_map = {
-            "technical": "conversational",
-            "corporate": "professional",
-            "academic": "academic",
-        }
-
-        result = humanizer.humanize_with_context(
-            input_text=text_content,
-            target_style=style_map.get(text_type, "conversational"),
-            context=f"This is a {text_type} document that needs to be more accessible.",
-            preserve_facts=True,
-        )
-
-        print(
-            f"Original Formality Score: {result['original_analysis'].get('formality_score', 'N/A')}/10"
-        )
-        print(
-            f"Final Formality Score: {result['final_analysis'].get('formality_score', 'N/A')}/10"
-        )
-
-        compare_texts_side_by_side(text_content, result["final_text"])
-
-    print(f"{'='*60}")
-    print("BATCH PROCESSING EXAMPLE")
-    print(f"{'='*60}")
-
-    batch_texts = [
-        """Dear Dr. Hamid Nick and the Selection Committee,
-
-I am thrilled to apply for the PhD position at DTU Offshore, focusing on the bio-geo-chemistry of Underground Hydrogen Storage (UHS), Carbon Capture and Storage (CCS), and their environmental impacts (Job ID: 5163). With a Master's degree in Renewable Energy Engineering and over 15 years of experience in computational modeling and sustainable energy solutions, I am eager to contribute my technical expertise and passion for environmental innovation to your esteemed research team.
-
-My academic journey has been driven by a deep curiosity about solving complex engineering challenges. During my Master's at the Materials and Energy Research Center, I conducted a thesis titled "Numerical Study of the Accuracy of the Three-Bowl Anemometer under Diagonal Flows." Using ANSYS Fluent, I developed and validated airflow models, optimizing mesh configurations to reduce measurement errors by up to 5%. This experience not only honed my skills in Computational Fluid Dynamics (CFD) but also sparked my interest in interdisciplinary research, particularly in areas like energy storage and environmental sustainability that align with the goals of this PhD program.
-
-Professionally, I have spent 15 years as a Renewable Energy Engineer at Nik Andish Kaveh Company, where I designed solar photovoltaic systems and leveraged tools like MATLAB and PVsyst to enhance efficiency. A highlight of my career was reducing installation costs by 20% while maintaining a 95% client satisfaction rate—a testament to my ability to balance technical rigor with practical impact. Additionally, as the founder of EverClean, a startup developing biodegradable products, I led laboratory research to create compostable materials, deepening my understanding of sustainable innovation and cross-disciplinary collaboration.
-
-The opportunity to join DTU Offshore excites me because it bridges my expertise in computational modeling with the pressing need to address bio-geo-chemical challenges in UHS and CCS. I am particularly drawn to the project's focus on microbial interactions and CO2 leakage assessment, as these areas combine my technical skills with my commitment to mitigating climate change. With proficiency in ANSYS, MATLAB, and Python, and a proven ability to work in diverse teams, I am confident in my capacity to contribute meaningfully to your research.
-
-Thank you for considering my application. I would be delighted to discuss how my background and enthusiasm can support DTU's mission to advance the energy transition. I look forward to the possibility of joining your vibrant research community.
-
-Sincerely,  
-Dena Milani  
-[Email: dena.milani@gmail.com | Phone: +989128137344]""",
-        "Implementation of new protocols will commence immediately.",
-        "Statistical analysis reveals noteworthy trends in consumer behavior.",
-    ]
-
-    humanizer.batch_humanize(
-        batch_texts, style="casual", save_results=True
-    )  # Results are printed within batch_humanize
-
-    print(f"{'='*60}")
-    print("INTERACTIVE MODE EXAMPLE (Commented out by default)")
-    print(f"{'='*60}")
-
-    interactive_text_example = """
-    The corporation's strategic initiatives have yielded substantial returns 
-    on investment, demonstrating the efficacy of our methodological approach 
-    to market expansion.
-    """
-    print("To try interactive mode, uncomment the lines in advanced_example()")
-    # try:
-    #     final_interactive_text = humanizer.interactive_humanize(interactive_text_example)
-    #     print("Final interactive result:", final_interactive_text)
-    # except Exception as e:
-    #     print(f"Could not run interactive example: {e}")
+# --- CLI integration ---
+def _process_func(humanizer, text, extra_kwargs):
+    return humanizer.humanize_with_context(
+        input_text=text,
+        context=extra_kwargs.get("context"),
+        target_style=extra_kwargs.get("style", "conversational"),
+        preserve_facts=extra_kwargs.get("preserve_facts", True),
+        max_iterations=extra_kwargs.get("max_iterations", 3),
+    )["final_text"]
 
 
-# Custom pipeline example
-def custom_pipeline_example():
-    api_key = os.getenv("OPENAI_API_KEY", "your-openai-api-key-here")
-    if api_key == "your-openai-api-key-here":
-        print("Warning: Using placeholder API key for custom_pipeline_example.")
-
-    # Example: Replace "your-base-url-here" with your actual base URL if needed
-    base_url = os.getenv("OPENAI_BASE_URL", None)  # "your-base-url-here"
-    humanizer = AdvancedTextHumanizer(api_key=api_key, base_url=base_url)
-
-    custom_steps = [
+def _extra_args():
+    return [
         {
-            "description": "Add storytelling elements",
-            "instructions": "Rewrite this text as if you're telling a story to a friend. Add narrative elements and make it engaging.",
+            "name": "--style",
+            "type": str,
+            "default": "conversational",
+            "choices": ["conversational", "professional", "casual", "academic"],
+            "help": "Target writing style (default: conversational).",
         },
         {
-            "description": "Insert personal touches",
-            "instructions": "Add personal pronouns, rhetorical questions, and make the reader feel involved.",
+            "name": "--context",
+            "type": str,
+            "default": None,
+            "help": "Optional context about the text.",
         },
         {
-            "description": "Polish with humor",
-            "instructions": "Where appropriate, add light humor or witty observations while maintaining the core message.",
+            "name": "--preserve-facts",
+            "action": "store_true",
+            "help": "Whether to try and preserve factual information (default: True).",
+        },
+        {
+            "name": "--no-preserve-facts",
+            "action": "store_false",
+            "dest": "preserve_facts",
+            "help": "Disable fact preservation.",
+        },
+        {
+            "name": "--max-iterations",
+            "type": int,
+            "default": 3,
+            "help": "Maximum number of iterations for style-specific prompts (default: 3).",
         },
     ]
-
-    custom_prompts = humanizer.create_custom_pipeline(custom_steps)
-
-    text_to_process = """
-   Dear Dr. Hamid Nick and the Selection Committee,
-
-I am thrilled to apply for the PhD position at DTU Offshore, focusing on the bio-geo-chemistry of Underground Hydrogen Storage (UHS), Carbon Capture and Storage (CCS), and their environmental impacts (Job ID: 5163). With a Master's degree in Renewable Energy Engineering and over 15 years of experience in computational modeling and sustainable energy solutions, I am eager to contribute my technical expertise and passion for environmental innovation to your esteemed research team.
-
-My academic journey has been driven by a deep curiosity about solving complex engineering challenges. During my Master's at the Materials and Energy Research Center, I conducted a thesis titled "Numerical Study of the Accuracy of the Three-Bowl Anemometer under Diagonal Flows." Using ANSYS Fluent, I developed and validated airflow models, optimizing mesh configurations to reduce measurement errors by up to 5%. This experience not only honed my skills in Computational Fluid Dynamics (CFD) but also sparked my interest in interdisciplinary research, particularly in areas like energy storage and environmental sustainability that align with the goals of this PhD program.
-
-Professionally, I have spent 15 years as a Renewable Energy Engineer at Nik Andish Kaveh Company, where I designed solar photovoltaic systems and leveraged tools like MATLAB and PVsyst to enhance efficiency. A highlight of my career was reducing installation costs by 20% while maintaining a 95% client satisfaction rate—a testament to my ability to balance technical rigor with practical impact. Additionally, as the founder of EverClean, a startup developing biodegradable products, I led laboratory research to create compostable materials, deepening my understanding of sustainable innovation and cross-disciplinary collaboration.
-
-The opportunity to join DTU Offshore excites me because it bridges my expertise in computational modeling with the pressing need to address bio-geo-chemical challenges in UHS and CCS. I am particularly drawn to the project's focus on microbial interactions and CO2 leakage assessment, as these areas combine my technical skills with my commitment to mitigating climate change. With proficiency in ANSYS, MATLAB, and Python, and a proven ability to work in diverse teams, I am confident in my capacity to contribute meaningfully to your research.
-
-Thank you for considering my application. I would be delighted to discuss how my background and enthusiasm can support DTU's mission to advance the energy transition. I look forward to the possibility of joining your vibrant research community.
-
-Sincerely,  
-Dena Milani  
-[Email: dena.milani@gmail.com | Phone: +989128137344]
-       """
-
-    print(f"{'='*60}")
-    print("CUSTOM PIPELINE EXAMPLE")
-    print(f"Original text for custom pipeline: {text_to_process}")
-    print(f"{'='*60}")
-
-    current_text_pipeline = text_to_process
-    for prompt_config in custom_prompts:
-        template = PromptTemplate(
-            input_variables=["text"], template=prompt_config["template"]
-        )
-        chain = LLMChain(llm=humanizer.llm, prompt=template)
-        try:
-            current_text_pipeline = chain.run(text=current_text_pipeline)
-            print(f"After {prompt_config['description']}:")
-            print(current_text_pipeline)
-        except Exception as e:
-            print(
-                f"Error during custom pipeline step '{prompt_config['description']}': {e}"
-            )
-            break  # Stop pipeline on error
-
-
-def main_cli():
-    parser = argparse.ArgumentParser(description="Advanced Text Humanizer CLI")
-    input_group = parser.add_mutually_exclusive_group()
-    input_group.add_argument("--text", type=str, help="Text to humanize directly.")
-    input_group.add_argument(
-        "--file", type=str, help="Path to a text file to humanize."
-    )
-    input_group.add_argument(
-        "--folder",
-        type=str,
-        help="Path to a folder containing .txt and .md files to humanize.",
-    )
-
-    parser.add_argument(
-        "--style",
-        type=str,
-        default="conversational",
-        choices=["conversational", "professional", "casual", "academic"],
-        help="Target writing style (default: conversational).",
-    )
-    parser.add_argument(
-        "--context",
-        type=str,
-        default=None,
-        help="Optional context about the text.",
-    )
-    parser.add_argument(
-        "--preserve-facts",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Whether to try and preserve factual information (default: True).",
-    )
-    parser.add_argument(
-        "--max-iterations",
-        type=int,
-        default=3,
-        help="Maximum number of iterations for style-specific prompts (default: 3).",
-    )
-
-    args = parser.parse_args()
-
-    api_key = os.getenv("OPENAI_API_KEY")
-    base_url = os.getenv("OPENAI_BASE_URL")
-
-    if not api_key:
-        print(
-            "Error: OPENAI_API_KEY environment variable not set. Please set it before running."
-        )
-        return
-
-    humanizer = AdvancedTextHumanizer(api_key=api_key, base_url=base_url)
-    texts_to_process = []
-
-    if args.text:
-        texts_to_process.append({"source": "command-line text", "content": args.text})
-    elif args.file:
-        try:
-            with open(args.file, "r", encoding="utf-8") as f:
-                texts_to_process.append({"source": args.file, "content": f.read()})
-        except FileNotFoundError:
-            print(f"Error: File not found at {args.file}")
-            return
-        except Exception as e:
-            print(f"Error reading file {args.file}: {e}")
-            return
-    elif args.folder:
-        found_files = []
-        for ext in ("*.txt", "*.md"):
-            found_files.extend(glob.glob(os.path.join(args.folder, ext)))
-
-        if not found_files:
-            print(f"No .txt or .md files found in folder {args.folder}")
-            return
-
-        for filepath in found_files:
-            try:
-                with open(filepath, "r", encoding="utf-8") as f:
-                    texts_to_process.append({"source": filepath, "content": f.read()})
-            except Exception as e:
-                print(f"Error reading file {filepath}: {e}")
-                # Continue to next file
-    else:
-        try:
-            print(
-                "No input provided via arguments. Please enter text to humanize (Ctrl+D or Ctrl+Z then Enter to finish):"
-            )
-            user_input_lines = []
-            while True:
-                line = input()
-                user_input_lines.append(line)
-        except EOFError:
-            user_text = "\n".join(user_input_lines)
-            if not user_text.strip():
-                print("No input received. Exiting.")
-                return
-            texts_to_process.append(
-                {"source": "interactive input", "content": user_text}
-            )
-        except KeyboardInterrupt:
-            print("\nOperation cancelled by user.")
-            return
-
-    if not texts_to_process:
-        print("No text to process. Exiting.")
-        return
-
-    for item in texts_to_process:
-        print(f"\n--- Humanizing content from: {item['source']} ---")
-        print(
-            f"Original Text:\n{item['content'][:500]}{'...' if len(item['content']) > 500 else ''}"
-        )
-
-        result = humanizer.humanize_with_context(
-            input_text=item["content"],
-            context=args.context,
-            target_style=args.style,
-            preserve_facts=args.preserve_facts,
-            max_iterations=args.max_iterations,
-        )
-
-        print("\n--- Humanized Text ---")
-        print(result["final_text"])
-        print("------------------------")
-        if len(texts_to_process) > 1:
-            print(f"Finished processing: {item['source']}")
 
 
 if __name__ == "__main__":
-    # print("Running Advanced Humanizer Examples...")
-    # advanced_example() # Commented out to prioritize CLI
-    # print("Running Custom Pipeline Example...")
-    # custom_pipeline_example() # Commented out to prioritize CLI
-    # print("Examples complete. Uncomment specific examples in main block to run them.")
-    main_cli()
+    import sys
+
+    cli_utils_path = os.path.join(os.path.dirname(__file__), "humanize_cli_utils.py")
+    spec = importlib.util.spec_from_file_location("humanize_cli_utils", cli_utils_path)
+    cli_utils = importlib.util.module_from_spec(spec)
+    sys.modules["humanize_cli_utils"] = cli_utils
+    spec.loader.exec_module(cli_utils)
+
+    cli_utils.generic_main_cli(
+        description="Advanced Text Humanizer CLI",
+        humanizer_class=lambda: AdvancedTextHumanizer(
+            api_key=os.getenv("OPENAI_API_KEY"), base_url=os.getenv("OPENAI_BASE_URL")
+        ),
+        process_func=_process_func,
+        extra_args=_extra_args(),
+        extra_setup=lambda args: {
+            "style": args.style,
+            "context": args.context,
+            "preserve_facts": args.preserve_facts,
+            "max_iterations": args.max_iterations,
+            "verbose": args.verbose,
+        },
+    )

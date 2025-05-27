@@ -4,8 +4,7 @@ from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain_community.callbacks.manager import get_openai_callback
 from typing import List, Dict
-import argparse
-import glob
+import importlib.util
 
 # Load environment variables (for OPENAI_API_KEY)
 load_dotenv()
@@ -182,111 +181,43 @@ class TextHumanizer:
         }
 
 
-def main_cli():
-    parser = argparse.ArgumentParser(description="Text Humanizer CLI (version 2)")
-    input_group = parser.add_mutually_exclusive_group()
-    input_group.add_argument("--text", type=str, help="Text to humanize directly.")
-    input_group.add_argument(
-        "--file", type=str, help="Path to a text file to humanize."
-    )
-    input_group.add_argument(
-        "--folder",
-        type=str,
-        help="Path to a folder containing .txt and .md files to humanize.",
-    )
-    parser.add_argument(
-        "--iterations",
-        type=int,
-        default=None,
-        help="Number of humanization iterations (default: all available prompts).",
-    )
-    parser.add_argument(
-        "--verbose",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Print progress and cost messages (default: True).",
+def _process_func(humanizer, text, extra_kwargs):
+    return humanizer.humanize_text(
+        input_text=text,
+        iterations=extra_kwargs.get("iterations"),
+        verbose=extra_kwargs.get("verbose", True),
     )
 
-    args = parser.parse_args()
 
-    try:
-        humanizer = TextHumanizer()
-    except ValueError as e:
-        print(f"Error initializing TextHumanizer: {e}")
-        return
-
-    texts_to_process = []
-
-    if args.text:
-        texts_to_process.append({"source": "command-line text", "content": args.text})
-    elif args.file:
-        try:
-            with open(args.file, "r", encoding="utf-8") as f:
-                texts_to_process.append({"source": args.file, "content": f.read()})
-        except FileNotFoundError:
-            print(f"Error: File not found at {args.file}")
-            return
-        except Exception as e:
-            print(f"Error reading file {args.file}: {e}")
-            return
-    elif args.folder:
-        found_files = []
-        for ext in ("*.txt", "*.md"):
-            found_files.extend(glob.glob(os.path.join(args.folder, ext)))
-
-        if not found_files:
-            print(f"No .txt or .md files found in folder {args.folder}")
-            return
-
-        for filepath in found_files:
-            try:
-                with open(filepath, "r", encoding="utf-8") as f:
-                    texts_to_process.append({"source": filepath, "content": f.read()})
-            except Exception as e:
-                print(f"Error reading file {filepath}: {e}")
-                continue
-    else:
-        try:
-            print(
-                "No input provided via arguments. Please enter text to humanize (Ctrl+D or Ctrl+Z then Enter to finish):"
-            )
-            user_input_lines = []
-            while True:
-                line = input()
-                user_input_lines.append(line)
-        except EOFError:
-            user_text = "\n".join(user_input_lines)
-            if not user_text.strip():
-                print("No input received. Exiting.")
-                return
-            texts_to_process.append(
-                {"source": "interactive input", "content": user_text}
-            )
-        except KeyboardInterrupt:
-            print("\nOperation cancelled by user.")
-            return
-
-    if not texts_to_process:
-        print("No text to process. Exiting.")
-        return
-
-    for item in texts_to_process:
-        if args.verbose:
-            print(f"\n--- Humanizing content from: {item['source']} ---")
-            print(
-                f"Original Text:\n{item['content'][:500]}{'...' if len(item['content']) > 500 else ''}"
-            )
-
-        humanized_text = humanizer.humanize_text(
-            input_text=item["content"], iterations=args.iterations, verbose=args.verbose
-        )
-
-        if args.verbose:
-            print(f"\n=== Final Humanized Text from: {item['source']} ===")
-        print(humanized_text)
-        if args.verbose and len(texts_to_process) > 1:
-            print("---------------------------------------------------")
+def _extra_args():
+    return [
+        {
+            "name": "--iterations",
+            "type": int,
+            "default": None,
+            "help": "Number of humanization iterations (default: all available prompts).",
+        },
+    ]
 
 
 if __name__ == "__main__":
-    main_cli()
+    # Dynamically import the generic_main_cli from humanize_cli_utils.py
+    import importlib.util
+    import sys
+
+    cli_utils_path = os.path.join(os.path.dirname(__file__), "humanize_cli_utils.py")
+    spec = importlib.util.spec_from_file_location("humanize_cli_utils", cli_utils_path)
+    cli_utils = importlib.util.module_from_spec(spec)
+    sys.modules["humanize_cli_utils"] = cli_utils
+    spec.loader.exec_module(cli_utils)
+
+    cli_utils.generic_main_cli(
+        description="Text Humanizer CLI (version 2)",
+        humanizer_class=TextHumanizer,
+        process_func=_process_func,
+        extra_args=_extra_args(),
+        extra_setup=lambda args: {
+            "iterations": args.iterations,
+            "verbose": args.verbose,
+        },
+    )
