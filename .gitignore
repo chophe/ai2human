@@ -11,3 +11,4 @@ wheels/
 humanization_history.txt
 humanization_batch_*.json
 .env
+text.md
