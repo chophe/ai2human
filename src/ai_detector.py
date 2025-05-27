@@ -2,6 +2,8 @@ import re
 import nltk
 from collections import Counter
 import statistics
+import os
+import importlib.util
 
 # Download required NLTK data (run once)
 import ssl
@@ -134,14 +136,18 @@ class AITextDetector:
 
         # Calculate repetition score
         repetitions = sum(1 for count in word_freq.values() if count > 2)
-        repetition_score = (repetitions / len(set(words))) * 100
+        repetition_score = (
+            (repetitions / len(set(words))) * 100 if len(set(words)) > 0 else 0
+        )
 
         return repetition_score
 
     def detect_ai_percentage(self, text):
         """Main function to detect AI-generated content percentage"""
         if len(text.strip()) < 100:
-            return {"error": "Text too short for reliable analysis"}
+            return {
+                "error": "Text too short for reliable analysis (minimum 100 characters)."
+            }
 
         # Calculate individual scores
         uniformity_score = self.calculate_sentence_uniformity(text)
@@ -180,79 +186,86 @@ class AITextDetector:
         }
 
 
-def analyze_file(filename):
-    """Analyze a text file for AI-generated content"""
-    try:
-        with open(filename, "r", encoding="utf-8") as file:
-            text = file.read()
+def _format_results(results: dict, source_name: str = "Text") -> str:
+    if "error" in results:
+        return f"Error analyzing {source_name}: {results['error']}"
 
-        detector = AITextDetector()
-        results = detector.detect_ai_percentage(text)
+    output_lines = []
+    output_lines.append(f"AI Detection Analysis for: {source_name}")
+    output_lines.append(f"{'='*50}")
+    output_lines.append(f"Overall AI Probability: {results['ai_probability']}%")
+    output_lines.append("\nDetailed Scores:")
+    output_lines.append(
+        f"  - Sentence Uniformity: {results['details']['sentence_uniformity']}%"
+    )
+    output_lines.append(
+        f"  - Vocabulary Patterns: {results['details']['vocabulary_pattern']}%"
+    )
+    output_lines.append(
+        f"  - AI Phrase Indicators: {results['details']['ai_phrases_found']}%"
+    )
+    output_lines.append(
+        f"  - Punctuation Formality: {results['details']['punctuation_formality']}%"
+    )
+    output_lines.append(
+        f"  - Repetition Patterns: {results['details']['repetition_pattern']}%"
+    )
 
-        if "error" in results:
-            print(f"Error: {results['error']}")
-            return
-
-        print(f"\n{'='*50}")
-        print(f"AI Detection Analysis for: {filename}")
-        print(f"{'='*50}")
-        print(f"\nOverall AI Probability: {results['ai_probability']}%")
-        print(f"\nDetailed Scores:")
-        print(f"  - Sentence Uniformity: {results['details']['sentence_uniformity']}%")
-        print(f"  - Vocabulary Patterns: {results['details']['vocabulary_pattern']}%")
-        print(f"  - AI Phrase Indicators: {results['details']['ai_phrases_found']}%")
-        print(
-            f"  - Punctuation Formality: {results['details']['punctuation_formality']}%"
+    ai_prob = results["ai_probability"]
+    output_lines.append("\nInterpretation:")
+    if ai_prob < 30:
+        output_lines.append("  This text appears to be primarily human-written.")
+    elif ai_prob < 50:
+        output_lines.append(
+            "  This text shows some AI-like characteristics but is likely human-written."
         )
-        print(f"  - Repetition Patterns: {results['details']['repetition_pattern']}%")
+    elif ai_prob < 70:
+        output_lines.append(
+            "  This text shows moderate AI characteristics. It may be AI-assisted or edited."
+        )
+    else:
+        output_lines.append(
+            "  This text shows strong AI characteristics and is likely AI-generated."
+        )
 
-        # Interpretation
-        ai_prob = results["ai_probability"]
-        print(f"\nInterpretation:")
-        if ai_prob < 30:
-            print("  This text appears to be primarily human-written.")
-        elif ai_prob < 50:
-            print(
-                "  This text shows some AI-like characteristics but is likely human-written."
-            )
-        elif ai_prob < 70:
-            print(
-                "  This text shows moderate AI characteristics. It may be AI-assisted or edited."
-            )
-        else:
-            print(
-                "  This text shows strong AI characteristics and is likely AI-generated."
-            )
-
-    except FileNotFoundError:
-        print(f"Error: File '{filename}' not found.")
-    except Exception as e:
-        print(f"Error analyzing file: {str(e)}")
+    return "\n".join(output_lines)
 
 
-# Example usage
+def _process_func(detector, text, extra_kwargs):
+    source_name = extra_kwargs.get(
+        "source", "Input Text"
+    )  # Get source from kwargs if available
+    results = detector.detect_ai_percentage(text)
+    return _format_results(results, source_name)
+
+
 if __name__ == "__main__":
-    # You can change this to your file path
-    filename = input("Enter the path to your text file: ").strip()
-    analyze_file(filename)
+    import sys
 
-    # Optional: Analyze text directly
-    print("\n" + "=" * 50)
-    choice = input("\nWould you like to analyze text directly? (y/n): ").strip().lower()
-    if choice == "y":
-        print("Enter your text (press Enter twice to finish):")
-        lines = []
-        while True:
-            line = input()
-            if line == "":
-                break
-            lines.append(line)
+    # Construct the path to humanize_cli_utils.py relative to this script
+    # This assumes humanize_cli_utils.py is in the same directory (src)
+    current_dir = os.path.dirname(__file__)
+    utils_path = os.path.join(current_dir, "humanize_cli_utils.py")
 
-        text = "\n".join(lines)
-        if text:
-            detector = AITextDetector()
-            results = detector.detect_ai_percentage(text)
-            if "error" not in results:
-                print(
-                    f"\nDirect Text Analysis - AI Probability: {results['ai_probability']}%"
-                )
+    spec = importlib.util.spec_from_file_location("humanize_cli_utils", utils_path)
+    if spec is None:
+        print(
+            f"Error: Could not load humanize_cli_utils.py from {utils_path}. Ensure the file exists."
+        )
+        sys.exit(1)
+
+    cli_utils = importlib.util.module_from_spec(spec)
+    sys.modules["humanize_cli_utils"] = (
+        cli_utils  # Add to sys.modules before exec_module
+    )
+    spec.loader.exec_module(cli_utils)
+
+    cli_utils.generic_main_cli(
+        description="AI Text Detector (Heuristic-based)",
+        humanizer_class=AITextDetector,  # Pass the class itself
+        process_func=_process_func,
+        extra_args=None,  # No extra arguments for this detector
+        extra_setup=lambda args: {
+            "verbose": args.verbose
+        },  # Pass verbose to process_func if needed for source name extraction
+    )
