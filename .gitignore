@@ -10,3 +10,4 @@ wheels/
 .venv
 humanization_history.txt
 humanization_batch_*.json
+.env
