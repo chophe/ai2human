@@ -19,7 +19,7 @@ class AdvancedTextHumanizer:
     def __init__(
         self,
         api_key: str,
-        model_name: str = "gpt-4.1",
+        model_name: Optional[str] = None,
         use_chat_model: bool = True,
         base_url: Optional[str] = None,
     ):
@@ -34,9 +34,16 @@ class AdvancedTextHumanizer:
         """
         os.environ["OPENAI_API_KEY"] = api_key
 
+        # Determine model_name: passed > env > default
+        final_model_name = model_name  # Prioritize passed model_name
+        if final_model_name is None:
+            final_model_name = os.getenv(
+                "OPENAI_MODEL_NAME", "gpt-4o"
+            )  # Then env, then default "gpt-4o"
+
         llm_params = {
             "temperature": 0.7,
-            "model_name": model_name,
+            "model_name": final_model_name,  # Use determined model name
         }
         if base_url:
             llm_params["base_url"] = base_url
@@ -600,40 +607,21 @@ if __name__ == "__main__":
     spec.loader.exec_module(cli_utils)
 
     # Define how to instantiate AdvancedTextHumanizer, now that generic_main_cli handles it
-    # It expects api_key and optionally base_url.
-    # generic_main_cli will try to provide these from os.environ if the class constructor
-    # (AdvancedTextHumanizer.__init__) includes 'api_key' and 'base_url' as parameters.
-    # Our updated AdvancedTextHumanizer expects them.
-    def humanizer_factory():
-        api_key = os.getenv("OPENAI_API_KEY")
-        base_url = os.getenv("OPENAI_BASE_URL")  # Can be None
-        if not api_key:
-            # generic_main_cli should ideally handle this, but a check here is also good.
-            # However, the instantiation happens inside generic_main_cli now.
-            # This factory is more about *how* to call it if it had complex needs not covered by env vars alone.
-            # For this case, generic_main_cli's default behavior of checking env vars should be sufficient.
-            # If api_key is absolutely mandatory and not found, generic_main_cli's instantiation will fail.
-            # Consider if AdvancedTextHumanizer should raise an error if api_key is None.
-            # Current AdvancedTextHumanizer takes api_key as a mandatory arg.
-            print(
-                "Error: OPENAI_API_KEY not found in environment for AdvancedTextHumanizer."
-            )
-            # sys.exit(1) # Exiting here might be too early, let generic_main_cli handle instantiation error.
-            # For now, we rely on generic_main_cli to pass the key or fail.
-            # The factory can be simplified if generic_main_cli handles env var pickup well.
-            pass  # Rely on generic_main_cli to attempt instantiation
-        return AdvancedTextHumanizer(api_key=api_key, base_url=base_url)
+    # It expects api_key and optionally base_url and model_name.
+    # generic_main_cli will try to provide these from os.environ or CLI args if the class constructor
+    # (AdvancedTextHumanizer.__init__) includes these parameters.
 
     cli_utils.generic_main_cli(
         description="Advanced Text Humanizer CLI",
-        humanizer_class=AdvancedTextHumanizer,  # Pass the class itself. generic_main_cli will instantiate.
+        humanizer_class=AdvancedTextHumanizer,  # Pass the class itself.
         process_func=_process_func,
-        extra_args=_extra_args(),
+        extra_args=_extra_args(),  # _extra_args doesn't need --model, generic_main_cli adds it
         extra_setup=lambda args: {
             "style": args.style,
             "context": args.context,
-            "preserve_facts": args.preserve_facts,  # This will be correctly set by BooleanOptionalAction
+            "preserve_facts": args.preserve_facts,
             "max_iterations": args.max_iterations,
             "verbose": args.verbose,
+            # model is handled by generic_main_cli and passed to AdvancedTextHumanizer constructor
         },
     )

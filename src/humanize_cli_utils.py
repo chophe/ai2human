@@ -40,6 +40,13 @@ def generic_main_cli(
         default=True,
         help="Print progress and cost messages (default: True).",
     )
+    # Add --model argument
+    parser.add_argument(
+        "--model",
+        type=str,
+        default=None,
+        help="Name of the LLM model to use (e.g., gpt-4o, gpt-3.5-turbo). Overrides OPENAI_MODEL_NAME env variable.",
+    )
     # Add any extra arguments
     if extra_args:
         for arg_config in extra_args:
@@ -61,21 +68,39 @@ def generic_main_cli(
     # Check if humanizer_class is a type (class) before inspecting constructor
     # and not a lambda function that might not have typical class properties.
     if isinstance(humanizer_class, type):
-        # A more robust way to check constructor parameters would be inspect.signature,
-        # but for simplicity, we assume if it needs api_key/base_url, they are named so.
-        # This is a heuristic. A better way would be to have classes register their needs.
         try:
-            # Attempt to get OPENAI_API_KEY and OPENAI_BASE_URL for classes that might use them
-            # This is a bit of a guess; ideally, classes should handle their own config or
-            # the CLI should be more explicit about passing these.
-            constructor_params = humanizer_class.__init__.__code__.co_varnames
+            constructor_params = list(humanizer_class.__init__.__code__.co_varnames)
+            constructor_params = constructor_params[
+                : humanizer_class.__init__.__code__.co_argcount
+            ]
+
+            # API Key
             if "api_key" in constructor_params and os.getenv("OPENAI_API_KEY"):
                 init_kwargs["api_key"] = os.getenv("OPENAI_API_KEY")
-            if "base_url" in constructor_params and os.getenv("OPENAI_BASE_URL"):
-                init_kwargs["base_url"] = os.getenv("OPENAI_BASE_URL")
-            # For TextHumanizer from humanize2.py which takes api_key and api_base_url
-            if "api_base_url" in constructor_params and os.getenv("OPENAI_BASE_URL"):
-                init_kwargs["api_base_url"] = os.getenv("OPENAI_BASE_URL")
+
+            # Base URL
+            # Prefer OPENAI_BASE_URL for clarity, but support OPENAI_API_BASE for TextHumanizer
+            base_url_to_use = os.getenv("OPENAI_BASE_URL") or os.getenv(
+                "OPENAI_API_BASE"
+            )
+            if base_url_to_use:
+                if "base_url" in constructor_params:
+                    init_kwargs["base_url"] = base_url_to_use
+                if (
+                    "api_base_url" in constructor_params
+                ):  # Specifically for TextHumanizer
+                    init_kwargs["api_base_url"] = base_url_to_use
+
+            # Model Name - prioritize CLI, then ENV
+            determined_model_name = args.model  # From CLI
+            if not determined_model_name:
+                determined_model_name = os.getenv("OPENAI_MODEL_NAME")  # From ENV
+
+            if determined_model_name:
+                if "model_name" in constructor_params:
+                    init_kwargs["model_name"] = determined_model_name
+                elif "model" in constructor_params:  # some classes might use 'model'
+                    init_kwargs["model"] = determined_model_name
 
         except (
             AttributeError

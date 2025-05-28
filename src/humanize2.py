@@ -14,7 +14,7 @@ class TextHumanizer:
     def __init__(
         self,
         api_key: str = None,
-        model_name: str = "gpt-4.1",
+        model_name: str = None,
         api_base_url: str = None,
     ):
         """
@@ -30,10 +30,18 @@ class TextHumanizer:
             raise ValueError(
                 "OPENAI_API_KEY not found. Please set it in your .env file or environment."
             )
+
+        # Determine model_name: passed > env > default
+        final_model_name = model_name  # Prioritize passed model_name
+        if final_model_name is None:
+            final_model_name = os.getenv(
+                "OPENAI_MODEL_NAME", "gpt-3.5-turbo"
+            )  # Then env, then default
+
         if api_base_url is None:
             api_base_url = os.getenv("OPENAI_API_BASE") or os.getenv("OPENAI_BASE_URL")
         os.environ["OPENAI_API_KEY"] = api_key
-        llm_kwargs = {"temperature": 0.7, "model_name": model_name}
+        llm_kwargs = {"temperature": 0.7, "model_name": final_model_name}
         if api_base_url:
             llm_kwargs["base_url"] = api_base_url
         self.llm = ChatOpenAI(openai_api_key=api_key, **llm_kwargs)

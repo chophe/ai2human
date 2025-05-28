@@ -4,6 +4,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 import importlib.util
+from typing import Any
 
 # Load environment variables (for OPENAI_API_KEY)
 load_dotenv()
@@ -15,18 +16,15 @@ if not OPENAI_API_KEY:
         "OPENAI_API_KEY not found. Please set it in your .env file or environment."
     )
 
-LLM_MODEL = "gpt-4o"  # Or "gpt-3.5-turbo", "gpt-4-turbo" etc.
+# LLM_MODEL = "gpt-4o"  # Or "gpt-3.5-turbo", "gpt-4-turbo" etc. # This will be determined dynamically
+DEFAULT_LLM_MODEL = "gpt-4o"
 TEMPERATURE = (
     0.7  # Controls randomness: 0.0 for more deterministic, 1.0 for more creative
 )
 
 # Langchain Setup
-llm = ChatOpenAI(
-    openai_api_key=OPENAI_API_KEY,
-    model=LLM_MODEL,
-    temperature=TEMPERATURE,
-    base_url=OPENAI_BASE_URL,
-)
+# llm will be created dynamically in _process_func
+# humanize_chain will be created dynamically in _process_func
 
 humanize_prompt_template_str = """
 You are a skilled text editor specializing in making content sound more human, natural, and engaging.
@@ -56,11 +54,14 @@ Please provide only the humanized version of the text.
 
 humanize_prompt = ChatPromptTemplate.from_template(humanize_prompt_template_str)
 output_parser = StrOutputParser()
-humanize_chain = humanize_prompt | llm | output_parser
+# humanize_chain = humanize_prompt | llm | output_parser # Moved to _process_func
 
 
 def iterative_humanize_text(
-    initial_text: str, num_iterations: int = 3, verbose: bool = True
+    initial_text: str,
+    humanize_chain: Any,
+    num_iterations: int = 3,
+    verbose: bool = True,
 ) -> tuple[str, list[dict]]:
     current_text = initial_text
     history = [{"iteration": 0, "text": current_text, "type": "Original"}]
@@ -89,10 +90,28 @@ def iterative_humanize_text(
 
 
 def _process_func(_unused, text, extra_kwargs):
+    model_name = extra_kwargs.get(
+        "model", os.getenv("OPENAI_MODEL_NAME", DEFAULT_LLM_MODEL)
+    )
+    verbose_output = extra_kwargs.get("verbose", True)
+    num_iterations = extra_kwargs.get("iterations", 3)
+
+    if verbose_output:
+        print(f"Using LLM model: {model_name}")
+
+    llm = ChatOpenAI(
+        openai_api_key=OPENAI_API_KEY,
+        model=model_name,
+        temperature=TEMPERATURE,
+        base_url=OPENAI_BASE_URL,
+    )
+    humanize_chain_dynamic = humanize_prompt | llm | output_parser
+
     final_text, _ = iterative_humanize_text(
         initial_text=text,
-        num_iterations=extra_kwargs.get("iterations", 3),
-        verbose=extra_kwargs.get("verbose", True),
+        humanize_chain=humanize_chain_dynamic,
+        num_iterations=num_iterations,
+        verbose=verbose_output,
     )
     return final_text
 
@@ -104,6 +123,12 @@ def _extra_args():
             "type": int,
             "default": 3,
             "help": "Number of humanization iterations (default: 3).",
+        },
+        {
+            "flags": ["--model"],
+            "type": str,
+            "default": DEFAULT_LLM_MODEL,
+            "help": f"LLM model to use (default: {DEFAULT_LLM_MODEL}).",
         },
     ]
 
@@ -125,5 +150,6 @@ if __name__ == "__main__":
         extra_setup=lambda args: {
             "iterations": args.iterations,
             "verbose": args.verbose,
+            "model": args.model,  # Pass the model from CLI args
         },
     )
