@@ -14,7 +14,7 @@ dependencies = [
     "torch",
     "transformers",
     "numpy",
-    "json",
+    "langchain-community",
 
 ]
 readme = "README.md"
