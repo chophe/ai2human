@@ -192,7 +192,21 @@ def generic_main_cli(
             except EOFError:
                 user_text = "\n".join(user_input_lines)
                 if not user_text.strip():
-                    typer.echo("No input received from stdin. Exiting.", err=True)
+                    typer.echo(
+                        "\n[ERROR] No input received from stdin. You must provide input using one of the following options:",
+                        err=True,
+                        color=typer.colors.RED,
+                    )
+                    typer.echo("  --text 'your text'", color=typer.colors.YELLOW)
+                    typer.echo("  --file path/to/file.txt", color=typer.colors.YELLOW)
+                    typer.echo("  --folder path/to/folder", color=typer.colors.YELLOW)
+                    typer.echo(
+                        "\nExample: rye run humanize --text 'Hello world!'\n",
+                        color=typer.colors.BLUE,
+                    )
+                    typer.echo(
+                        "Use --help to see all options.", color=typer.colors.BLUE
+                    )
                     raise typer.Exit(code=1)
                 texts_to_process.append(
                     {"source": "interactive stdin", "content": user_text}
