@@ -32,3 +32,10 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ai2human"]
+
+[tool.rye.scripts]
+humanize = "python -m src.ai2human.humanize"
+humanize2 = "python -m src.ai2human.humanize2"
+humanize_adv = "python -m src.ai2human.humanize-adv"
+ai_detector = "python -m src.ai2human.ai_detector"
+ai_detector_adv = "python -m src.ai2human.ai_detector_adv"
