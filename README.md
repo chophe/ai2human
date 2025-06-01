@@ -41,109 +41,70 @@ The project offers several approaches to text humanization:
 
 This project is ideal for developers, writers, and content creators looking to bridge the gap between machine-generated text and human expression.
 
+## Running Scripts with Rye
+
+This project is Rye-enabled for easy script execution. After installing dependencies and setting up your `.env`, you can run all main tools using short aliases:
+
+- `rye run humanize --help`
+- `rye run humanize2 --help`
+- `rye run humanize_adv --help`
+- `rye run ai_detector --help`
+- `rye run ai_detector_adv --help`
+
+These aliases are defined in the `[tool.rye.scripts]` section of `pyproject.toml` and map to the main scripts in `src/ai2human/`.
+
+You can pass any CLI arguments as usual, for example:
+
+```sh
+rye run humanize2 --iterations 2 --input "Your text here"
+rye run humanize_adv --style conversational --input "Some text"
+```
+
 ## Getting Started / Usage Examples
 
 ### Basic Humanization (`humanize.py`)
 
-1.  **Install dependencies:**
-    Ensure you have `langchain`, `langchain-openai`, and `python-dotenv` installed. If using `rye` (as per your custom instructions):
-    ```bash
-    rye add langchain langchain-openai python-dotenv
-    rye sync
-    ```
-    Or with `uv`/`pip`:
-    ```bash
-    uv pip install langchain langchain-openai python-dotenv
-    # or
-    # pip install langchain langchain-openai python-dotenv
-    ```
-2.  **Set your OpenAI API key:**
-    Create a `.env` file in the project root with your OpenAI API key:
-    ```env
-    OPENAI_API_KEY="your_openai_api_key_here"
-    # Optional: If using a custom OpenAI base URL
-    # OPENAI_BASE_URL="your_custom_base_url_here"
-    ```
-3.  **Run the script:**
+**With Rye:**
 
-    ```bash
-    python src/ai2human/humanize.py
-    ```
+```sh
+rye run humanize --help
+rye run humanize --iterations 2 --input "Your text here"
+```
 
-    This will run the example texts defined in the script.
+**Direct Python (also works):**
 
-4.  **Use in your code:**
-
-    ```python
-    from ai2human.humanize import iterative_humanize_text
-
-    sample_text = "The system's operational parameters have been optimized."
-    final_text, history = iterative_humanize_text(sample_text, num_iterations=2)
-    print("Final Humanized Text:")
-    print(final_text)
-    ```
+```sh
+python src/ai2human/humanize.py --help
+```
 
 ### Class-based Humanizer (`humanize2.py`)
 
-1.  **Setup:** (Dependencies and `.env` file as above)
-2.  **Run the script:**
+**With Rye:**
 
-    ```bash
-    python src/ai2human/humanize2.py
-    ```
+```sh
+rye run humanize2 --help
+rye run humanize2 --iterations 2 --input "Your text here"
+```
 
-    This will process the example text in the `main()` function and save a `humanization_history.txt`.
+**Direct Python (also works):**
 
-3.  **Use in your code:**
-
-    ```python
-    from ai2human.humanize2 import TextHumanizer
-
-    humanizer = TextHumanizer() # API key from .env
-    formal_text = "Dear Dr. Hamid Nick and the Selection Committee, I am thrilled to apply..." # Your long formal text
-    humanized_text = humanizer.humanize_text(formal_text, iterations=3, verbose=True)
-    print("\\nFINAL RESULT:")
-    print(humanized_text)
-
-    # Get history
-    history = humanizer.get_iteration_history()
-    for item in history:
-        print(f"Iteration {item['iteration']}: {item['description']}")
-        print(item['text'])
-    ```
+```sh
+python src/ai2human/humanize2.py --help
+```
 
 ### Advanced Humanizer (`humanize-adv.py`)
 
-1.  **Setup:** (Dependencies and `.env` file as above)
-2.  **Run the example:**
+**With Rye:**
 
-    ```bash
-    python src/ai2human/humanize-adv.py
-    ```
+```sh
+rye run humanize_adv --help
+rye run humanize_adv --style conversational --input "Some text"
+```
 
-    This script demonstrates various advanced features like style targeting, batch processing, and provides a structure for interactive humanization.
+**Direct Python (also works):**
 
-3.  **Use in your code (Example - Style specific):**
-
-    ```python
-    import os
-    from ai2human.humanize_adv import AdvancedTextHumanizer
-
-    api_key = os.getenv("OPENAI_API_KEY")
-    # base_url = os.getenv("OPENAI_BASE_URL") # Optional
-
-    humanizer = AdvancedTextHumanizer(api_key=api_key) #, base_url=base_url)
-
-    technical_text = "The device exhibits suboptimal performance under high-stress conditions."
-    result = humanizer.humanize_with_context(
-        input_text=technical_text,
-        target_style="conversational",
-        context="This is a technical report snippet for a general audience."
-    )
-    print("Original:", result['original_text'])
-    print("Humanized:", result['final_text'])
-    print("Original Analysis:", result['original_analysis'])
-    print("Final Analysis:", result['final_analysis'])
-    ```
+```sh
+python src/ai2human/humanize-adv.py --help
+```
 
 This project is ideal for developers, writers, and content creators looking to bridge the gap between machine-generated text and human expression.
