@@ -137,6 +137,8 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 
+cli = app
+
 humanize_command_func = generic_main_cli(
     humanizer_class=lambda **kwargs: None,
     process_func=_process_func,
