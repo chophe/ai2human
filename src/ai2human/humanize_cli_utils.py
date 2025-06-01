@@ -1,210 +1,264 @@
 import os
 import glob
-import argparse
-from typing import Callable, Any, Dict, List, Optional
+import typer
+from typing import Callable, Any, Dict, List, Optional, Annotated
 
 
 def generic_main_cli(
-    description: str,
     humanizer_class: Callable[..., Any],
     process_func: Callable[[Any, str, Dict[str, Any]], str],
-    extra_args: Optional[List[Dict[str, Any]]] = None,
-    extra_setup: Optional[Callable[[argparse.Namespace], Dict[str, Any]]] = None,
-):
+    extra_args_def: Optional[List[Dict[str, Any]]] = None,
+    extra_setup: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
+) -> Callable[..., None]:
     """
-    Generic CLI handler for humanizer scripts.
-
-    Args:
-        description: CLI description string
-        humanizer_class: The class to instantiate for humanization
-        process_func: Function to call for processing (instance, text, extra_kwargs) -> str
-        extra_args: List of dicts for extra argparse arguments.
-                    Each dict should have a 'flags' key (list of strings for arg names)
-                    and other keys as valid kwargs for parser.add_argument().
-        extra_setup: Function to extract extra kwargs from parsed args
+    Generic CLI handler factory for humanizer scripts using Typer.
+    Returns a function that can be registered as a Typer command.
     """
-    parser = argparse.ArgumentParser(description=description)
-    input_group = parser.add_mutually_exclusive_group()
-    input_group.add_argument("--text", type=str, help="Text to humanize directly.")
-    input_group.add_argument(
-        "--file", type=str, help="Path to a text file to humanize."
-    )
-    input_group.add_argument(
-        "--folder",
-        type=str,
-        help="Path to a folder containing .txt and .md files to humanize.",
-    )
-    parser.add_argument(
-        "--verbose",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Print progress and cost messages (default: True).",
-    )
-    # Add --model argument
-    parser.add_argument(
-        "--model",
-        type=str,
-        default=None,
-        help="Name of the LLM model to use (e.g., gpt-4o, gpt-3.5-turbo). Overrides OPENAI_MODEL_NAME env variable.",
-    )
-    # Add any extra arguments
-    if extra_args:
-        for arg_config in extra_args:
-            flags = arg_config.pop("flags", None)
-            if flags:
-                parser.add_argument(*flags, **arg_config)
-            else:
-                # This case should ideally not happen if extra_args are structured correctly
-                print(f"Warning: Argument config missing 'flags': {arg_config}")
 
-    args = parser.parse_args()
+    def command_function(
+        text: Annotated[
+            Optional[str],
+            typer.Option(
+                help="Text to process directly.", rich_help_panel="Input Options"
+            ),
+        ] = None,
+        file: Annotated[
+            Optional[str],
+            typer.Option(
+                help="Path to a text file to process.", rich_help_panel="Input Options"
+            ),
+        ] = None,
+        folder: Annotated[
+            Optional[str],
+            typer.Option(
+                help="Path to a folder with .txt/.md files to process.",
+                rich_help_panel="Input Options",
+            ),
+        ] = None,
+        verbose: Annotated[
+            bool, typer.Option(help="Print progress and cost messages.")
+        ] = True,
+        model: Annotated[
+            Optional[str],
+            typer.Option(
+                help="LLM model (e.g., gpt-4o). Overrides OPENAI_MODEL_NAME env var."
+            ),
+        ] = None,
+        **kwargs: Any,
+    ) -> None:
+        """
+        This function will be registered as a Typer command in the calling script.
+        It handles the core processing logic.
+        """
+        cli_args = {
+            "text": text,
+            "file": file,
+            "folder": folder,
+            "verbose": verbose,
+            "model": model,
+            **kwargs,
+        }
 
-    # Setup extra kwargs for processing
-    extra_kwargs_from_setup = extra_setup(args) if extra_setup else {}
-
-    # Initialize humanizer/detector class
-    # Pass API key and base_url if the class expects them and they are in os.environ
-    init_kwargs = {}
-    # Check if humanizer_class is a type (class) before inspecting constructor
-    # and not a lambda function that might not have typical class properties.
-    if isinstance(humanizer_class, type):
-        try:
-            constructor_params = list(humanizer_class.__init__.__code__.co_varnames)
-            constructor_params = constructor_params[
-                : humanizer_class.__init__.__code__.co_argcount
-            ]
-
-            # API Key
-            if "api_key" in constructor_params and os.getenv("OPENAI_API_KEY"):
-                init_kwargs["api_key"] = os.getenv("OPENAI_API_KEY")
-
-            # Base URL
-            # Prefer OPENAI_BASE_URL for clarity, but support OPENAI_API_BASE for TextHumanizer
-            base_url_to_use = os.getenv("OPENAI_BASE_URL") or os.getenv(
-                "OPENAI_API_BASE"
-            )
-            if base_url_to_use:
-                if "base_url" in constructor_params:
-                    init_kwargs["base_url"] = base_url_to_use
-                if (
-                    "api_base_url" in constructor_params
-                ):  # Specifically for TextHumanizer
-                    init_kwargs["api_base_url"] = base_url_to_use
-
-            # Model Name - prioritize CLI, then ENV
-            determined_model_name = args.model  # From CLI
-            if not determined_model_name:
-                determined_model_name = os.getenv("OPENAI_MODEL_NAME")  # From ENV
-
-            if determined_model_name:
-                if "model_name" in constructor_params:
-                    init_kwargs["model_name"] = determined_model_name
-                elif "model" in constructor_params:  # some classes might use 'model'
-                    init_kwargs["model"] = determined_model_name
-
-        except (
-            AttributeError
-        ):  # Lambdas or other callables might not have __init__ or __code__
-            pass
-
-    try:
-        humanizer_instance = humanizer_class(**init_kwargs)
-    except Exception as e:
-        print(
-            f"Error initializing class {humanizer_class.__name__ if hasattr(humanizer_class, '__name__') else str(humanizer_class)}: {e}"
+        input_options_count = sum(
+            1 for option in [text, file, folder] if option is not None
         )
-        return
+        if input_options_count > 1:
+            typer.echo(
+                "Error: --text, --file, and --folder are mutually exclusive.", err=True
+            )
+            raise typer.Exit(code=1)
 
-    texts_to_process = []
-    source_for_processing = "Input Text"
+        extra_kwargs_from_setup = extra_setup(cli_args) if extra_setup else {}
 
-    if args.text:
-        texts_to_process.append({"source": "command-line text", "content": args.text})
-        source_for_processing = "Command-line text"
-    elif args.file:
-        try:
-            with open(args.file, "r", encoding="utf-8") as f:
-                texts_to_process.append({"source": args.file, "content": f.read()})
-            source_for_processing = args.file
-        except FileNotFoundError:
-            print(f"Error: File not found at {args.file}")
-            return
-        except Exception as e:
-            print(f"Error reading file {args.file}: {e}")
-            return
-    elif args.folder:
-        found_files = []
-        for ext in ("*.txt", "*.md"):
-            found_files.extend(glob.glob(os.path.join(args.folder, ext)))
-        if not found_files:
-            print(f"No .txt or .md files found in folder {args.folder}")
-            return
-        for filepath in found_files:
+        init_kwargs: Dict[str, Any] = {}
+        if isinstance(humanizer_class, type):
             try:
-                with open(filepath, "r", encoding="utf-8") as f:
-                    texts_to_process.append({"source": filepath, "content": f.read()})
-            except Exception as e:
-                print(f"Error reading file {filepath}: {e}")
-                continue  # Process next file
-        source_for_processing = (
-            args.folder
-        )  # For a general source name if multiple files
-    else:
+                constructor = getattr(humanizer_class, "__init__", None)
+                if constructor:
+                    arg_spec = getattr(constructor, "__code__", None)
+                    if arg_spec:
+                        constructor_params = arg_spec.co_varnames[
+                            : arg_spec.co_argcount
+                        ]
+
+                        if "api_key" in constructor_params and os.getenv(
+                            "OPENAI_API_KEY"
+                        ):
+                            init_kwargs["api_key"] = os.getenv("OPENAI_API_KEY")
+
+                        base_url_to_use = os.getenv("OPENAI_BASE_URL") or os.getenv(
+                            "OPENAI_API_BASE"
+                        )
+                        if base_url_to_use:
+                            if "base_url" in constructor_params:
+                                init_kwargs["base_url"] = base_url_to_use
+                            if "api_base_url" in constructor_params:
+                                init_kwargs["api_base_url"] = base_url_to_use
+
+                        determined_model_name = cli_args.get("model")
+                        if not determined_model_name:
+                            determined_model_name = os.getenv("OPENAI_MODEL_NAME")
+
+                        if determined_model_name:
+                            if "model_name" in constructor_params:
+                                init_kwargs["model_name"] = determined_model_name
+                            elif "model" in constructor_params:
+                                init_kwargs["model"] = determined_model_name
+            except AttributeError:
+                if cli_args["verbose"]:
+                    typer.echo(
+                        "Notice: Could not fully introspect humanizer_class constructor for API keys/model.",
+                        color=typer.colors.YELLOW,
+                    )
+
+        if "model" not in init_kwargs and cli_args.get("model"):
+            if not isinstance(humanizer_class, type) or not hasattr(
+                humanizer_class.__init__, "__code__"
+            ):
+                init_kwargs["model"] = cli_args["model"]
+            elif isinstance(humanizer_class, type) and hasattr(
+                humanizer_class.__init__, "__code__"
+            ):
+                if humanizer_class.__init__.__code__.co_flags & 0x08:
+                    init_kwargs["model"] = cli_args["model"]
+
         try:
-            print(
-                "No input provided via arguments. Please enter text to humanize/analyze (Ctrl+D or Ctrl+Z then Enter to finish):"
+            humanizer_instance = humanizer_class(**init_kwargs)
+        except Exception as e:
+            typer.echo(
+                f"Error initializing class {getattr(humanizer_class, '__name__', str(humanizer_class))}: {e}",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+
+        texts_to_process: List[Dict[str, str]] = []
+        source_for_processing = "Input Text"
+
+        if cli_args.get("text"):
+            texts_to_process.append(
+                {"source": "command-line text", "content": cli_args["text"]}
+            )
+            source_for_processing = "Command-line text"
+        elif cli_args.get("file"):
+            file_path = cli_args["file"]
+            try:
+                with open(file_path, "r", encoding="utf-8") as f_in:
+                    texts_to_process.append(
+                        {"source": file_path, "content": f_in.read()}
+                    )
+                source_for_processing = file_path
+            except FileNotFoundError:
+                typer.echo(f"Error: File not found at {file_path}", err=True)
+                raise typer.Exit(code=1)
+            except Exception as e:
+                typer.echo(f"Error reading file {file_path}: {e}", err=True)
+                raise typer.Exit(code=1)
+        elif cli_args.get("folder"):
+            folder_path = cli_args["folder"]
+            found_files_paths = []
+            for ext in ("*.txt", "*.md"):
+                found_files_paths.extend(glob.glob(os.path.join(folder_path, ext)))
+
+            if not found_files_paths:
+                typer.echo(
+                    f"No .txt or .md files found in folder {folder_path}", err=True
+                )
+                raise typer.Exit(code=1)
+
+            for filepath_item in found_files_paths:
+                try:
+                    with open(filepath_item, "r", encoding="utf-8") as f_in:
+                        texts_to_process.append(
+                            {"source": filepath_item, "content": f_in.read()}
+                        )
+                except Exception as e:
+                    typer.echo(f"Error reading file {filepath_item}: {e}", err=True)
+                    continue
+            source_for_processing = folder_path
+        else:
+            typer.echo(
+                "No input source (--text, --file, --folder) provided. Reading from stdin.",
+                color=typer.colors.BLUE,
+            )
+            typer.echo(
+                "Enter text (Ctrl+D or Ctrl+Z then Enter on Windows to finish):",
+                color=typer.colors.BLUE,
             )
             user_input_lines = []
-            while True:
-                line = input()
-                user_input_lines.append(line)
-        except EOFError:
-            user_text = "\n".join(user_input_lines)
-            if not user_text.strip():
-                print("No input received. Exiting.")
-                return
-            texts_to_process.append(
-                {"source": "interactive input", "content": user_text}
-            )
-            source_for_processing = "Interactive input"
-        except KeyboardInterrupt:
-            print("\nOperation cancelled by user.")
-            return
+            try:
+                while True:
+                    line = input()
+                    user_input_lines.append(line)
+            except EOFError:
+                user_text = "\n".join(user_input_lines)
+                if not user_text.strip():
+                    typer.echo("No input received from stdin. Exiting.", err=True)
+                    raise typer.Exit(code=1)
+                texts_to_process.append(
+                    {"source": "interactive stdin", "content": user_text}
+                )
+                source_for_processing = "Interactive stdin"
+            except KeyboardInterrupt:
+                typer.echo("\nOperation cancelled by user.", err=True)
+                raise typer.Exit(code=1)
 
-    if not texts_to_process:
-        # This case should ideally be caught earlier for file/folder if no files are found/readable.
-        # For interactive input, it's caught if user_text is empty.
-        print("No text to process. Exiting.")
-        return
+        if not texts_to_process:
+            typer.echo("No text to process. Exiting.", err=True)
+            raise typer.Exit(code=1)
 
-    # Prepare combined kwargs for process_func, including args and setup_kwargs
-    # Give priority to specific kwargs from extra_setup if there are name clashes.
-    # Also pass the 'source' determined above to extra_kwargs for _process_func.
-    all_cli_args = {
-        **vars(args),
-        **extra_kwargs_from_setup,
-        "source": source_for_processing,
-    }
+        all_process_kwargs = {
+            **cli_args,
+            **extra_kwargs_from_setup,
+        }
 
-    for item in texts_to_process:
-        current_source = item[
-            "source"
-        ]  # Use specific source for each item in batch processing
-        if args.verbose:
-            print(f"\n--- Processing content from: {current_source} ---")
-            print(
-                f"Original Text:\n{item['content'][:500]}{'...' if len(item['content']) > 500 else ''}"
-            )
+        for item_idx, item in enumerate(texts_to_process):
+            current_text_content = item.get("content", "")
+            current_source = item.get("source", "Unknown source")
 
-        # Update the 'source' in all_cli_args for the current item being processed
-        # This allows _process_func to know the specific source of the current text item.
-        current_item_cli_args = {**all_cli_args, "source": current_source}
+            if cli_args.get("verbose", True):
+                typer.echo(f"\n--- Processing content from: ", nl=False)
+                typer.echo(f"{current_source}", color=typer.colors.CYAN)
+                display_content = current_text_content[:500] + (
+                    "..." if len(current_text_content) > 500 else ""
+                )
+                typer.echo(f"Original Text (first 500 chars):\n{display_content}")
 
-        result = process_func(
-            humanizer_instance, item["content"], current_item_cli_args
-        )
-        if args.verbose:
-            print(f"\n=== Result for: {current_source} ===")
-        print(result)
-        if args.verbose and len(texts_to_process) > 1:
-            print("---------------------------------------------------")
+            current_item_process_kwargs = {
+                **all_process_kwargs,
+                "source": current_source,
+            }
+
+            try:
+                result = process_func(
+                    humanizer_instance,
+                    current_text_content,
+                    current_item_process_kwargs,
+                )
+                if cli_args.get("verbose", True):
+                    typer.echo(f"\n=== Result for: ", nl=False)
+                    typer.echo(f"{current_source}", color=typer.colors.CYAN, bold=True)
+                    typer.echo(" ===", bold=True)
+                typer.echo(result)
+            except Exception as e:
+                typer.echo(
+                    f"Error during processing of {current_source}: {e}",
+                    err=True,
+                    color=typer.colors.RED,
+                )
+                if len(texts_to_process) == 1:
+                    raise typer.Exit(code=1)
+
+            if (
+                cli_args.get("verbose", True)
+                and len(texts_to_process) > 1
+                and item_idx < len(texts_to_process) - 1
+            ):
+                typer.echo(
+                    "---------------------------------------------------",
+                    color=typer.colors.BLUE,
+                )
+
+        if cli_args.get("verbose", True):
+            typer.echo("\n✨ Processing complete. ✨", color=typer.colors.GREEN)
+
+    return command_function

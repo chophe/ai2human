@@ -1,10 +1,11 @@
 import os
+import typer
+from typing import Any, Dict, Optional, Annotated
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-import importlib.util
-from typing import Any
+from .humanize_cli_utils import generic_main_cli
 
 # Load environment variables (for OPENAI_API_KEY)
 load_dotenv()
@@ -12,9 +13,11 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
 if not OPENAI_API_KEY:
-    raise ValueError(
-        "OPENAI_API_KEY not found. Please set it in your .env file or environment."
+    typer.echo(
+        "OPENAI_API_KEY not found. Please set it in your .env file or environment.",
+        err=True,
     )
+    raise typer.Exit(code=1)
 
 # LLM_MODEL = "gpt-4o"  # Or "gpt-3.5-turbo", "gpt-4-turbo" etc. # This will be determined dynamically
 DEFAULT_LLM_MODEL = "gpt-4o"
@@ -66,30 +69,32 @@ def iterative_humanize_text(
     current_text = initial_text
     history = [{"iteration": 0, "text": current_text, "type": "Original"}]
     if verbose:
-        print(f"Original Text:\n{current_text}\n{'-'*30}")
+        typer.echo(f"Original Text:\n{current_text}\n{'-'*30}")
     for i in range(1, num_iterations + 1):
         if verbose:
-            print(f"Processing Iteration {i}...")
+            typer.echo(f"Processing Iteration {i}...")
         try:
             humanized_output = humanize_chain.invoke({"text_to_humanize": current_text})
             if humanized_output.strip().lower() == current_text.strip().lower():
                 if verbose:
-                    print(
+                    typer.echo(
                         f"Iteration {i}: No significant change detected. Stopping early."
                     )
                 break
             current_text = humanized_output
             history.append({"iteration": i, "text": current_text, "type": "Humanized"})
             if verbose:
-                print(f"Humanized Text (Iteration {i}):\n{current_text}\n{'-'*30}")
+                typer.echo(f"Humanized Text (Iteration {i}):\n{current_text}\n{'-'*30}")
         except Exception as e:
             if verbose:
-                print(f"Error during iteration {i}: {e}")
+                typer.echo(f"Error during iteration {i}: {e}", err=True)
             break
     return current_text, history
 
 
-def _process_func(_unused, text, extra_kwargs):
+def _process_func(
+    _unused_instance: Any, text: str, extra_kwargs: Dict[str, Any]
+) -> str:
     model_name = extra_kwargs.get(
         "model", os.getenv("OPENAI_MODEL_NAME", DEFAULT_LLM_MODEL)
     )
@@ -97,7 +102,8 @@ def _process_func(_unused, text, extra_kwargs):
     num_iterations = extra_kwargs.get("iterations", 3)
 
     if verbose_output:
-        print(f"Using LLM model: {model_name}")
+        typer.echo(f"Using LLM model: {model_name}", color=typer.colors.BLUE)
+        typer.echo(f"Number of iterations: {num_iterations}", color=typer.colors.BLUE)
 
     llm = ChatOpenAI(
         openai_api_key=OPENAI_API_KEY,
@@ -116,40 +122,80 @@ def _process_func(_unused, text, extra_kwargs):
     return final_text
 
 
-def _extra_args():
-    return [
-        {
-            "flags": ["--iterations"],
-            "type": int,
-            "default": 3,
-            "help": "Number of humanization iterations (default: 3).",
-        },
-        {
-            "flags": ["--model"],
-            "type": str,
-            "default": DEFAULT_LLM_MODEL,
-            "help": f"LLM model to use (default: {DEFAULT_LLM_MODEL}).",
-        },
-    ]
+def _humanize_extra_setup(cli_args: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "iterations": cli_args.get("iterations", 3),
+        "verbose": cli_args.get("verbose", True),
+        "model": cli_args.get("model", DEFAULT_LLM_MODEL),
+    }
+
+
+app = typer.Typer(
+    name="humanize",
+    help="Iterative Text Humanizer CLI: Refines text to sound more human and engaging.",
+    add_completion=False,
+    no_args_is_help=True,
+)
+
+humanize_command_func = generic_main_cli(
+    humanizer_class=lambda **kwargs: None,
+    process_func=_process_func,
+    extra_setup=_humanize_extra_setup,
+)
+
+
+@app.command(
+    help="Humanizes text from a string, file, or folder using an LLM.",
+    no_args_is_help=True,
+)
+def main(
+    text: Annotated[
+        Optional[str],
+        typer.Option(
+            help="Text to humanize directly.", rich_help_panel="Input Options"
+        ),
+    ] = None,
+    file: Annotated[
+        Optional[str],
+        typer.Option(
+            help="Path to a text file to humanize.", rich_help_panel="Input Options"
+        ),
+    ] = None,
+    folder: Annotated[
+        Optional[str],
+        typer.Option(
+            help="Path to a folder with .txt/.md files.",
+            rich_help_panel="Input Options",
+        ),
+    ] = None,
+    verbose: Annotated[bool, typer.Option(help="Enable verbose output.")] = True,
+    model: Annotated[
+        Optional[str],
+        typer.Option(
+            help=f"LLM model (e.g., gpt-4o, default: {DEFAULT_LLM_MODEL}). Overrides OPENAI_MODEL_NAME."
+        ),
+    ] = None,
+    iterations: Annotated[
+        int,
+        typer.Option(
+            help="Number of humanization iterations.",
+            rich_help_panel="Processing Options",
+        ),
+    ] = 3,
+):
+    """
+    Iterative Text Humanizer CLI using OpenAI.
+    Humanizes the provided text input from direct string, file, or folder.
+    """
+    humanize_command_func(
+        text=text,
+        file=file,
+        folder=folder,
+        verbose=verbose,
+        model=model,
+        iterations=iterations,
+    )
 
 
 if __name__ == "__main__":
-    import sys
-
-    cli_utils_path = os.path.join(os.path.dirname(__file__), "humanize_cli_utils.py")
-    spec = importlib.util.spec_from_file_location("humanize_cli_utils", cli_utils_path)
-    cli_utils = importlib.util.module_from_spec(spec)
-    sys.modules["humanize_cli_utils"] = cli_utils
-    spec.loader.exec_module(cli_utils)
-
-    cli_utils.generic_main_cli(
-        description="Iterative Text Humanizer CLI",
-        humanizer_class=lambda: None,  # No class needed for this script
-        process_func=_process_func,
-        extra_args=_extra_args(),
-        extra_setup=lambda args: {
-            "iterations": args.iterations,
-            "verbose": args.verbose,
-            "model": args.model,  # Pass the model from CLI args
-        },
-    )
+    app()
